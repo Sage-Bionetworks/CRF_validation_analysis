@@ -3,7 +3,7 @@ This project contains code and results from a validation study in Cardio Respira
 
 See: https://www.synapse.org/CRF_module for data and output
 
-# CRF_extractHR.R
+## crf_extractHR.R
 Run this file to extract features for all PMI healthcodes for the activities: 
 
 1. Cardio 12MT-v5 ('syn11665074', the 12 minute run test)
@@ -13,5 +13,6 @@ Run this file to extract features for all PMI healthcodes for the activities:
 Uncomment the activity for which you want to run the analysis for. 
 The results are stored in the Features folder ('syn11968320') of the CRF_ModuleProject 
 
-# crf_analysis.Rmd
-
+## crf_analysis.Rmd
+Run this file to extract summary parameters of the algorithm's performance on the HR recordings.
+The summary parameters include Confidence values, R2, absolute error etc.,

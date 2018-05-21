@@ -197,14 +197,14 @@ hr.results <- rbind(hr.after.table, hr.before.table)
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
 thisFileName <- 'crf_extractHR.R'
-thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
+thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 
-
+# Write to Synapse
 write.csv(hr.results,file = paste0('hr_results',name,'.csv'),na="")
 obj = File(paste0('hr_results',name,'.csv'), 
            name = paste0('hr_results',name,'.csv'), 
            parentId = 'syn11968320')
-obj = synStore(obj,  used = all.used.ids, executed = 'syn11969253')
+obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 

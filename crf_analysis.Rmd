@@ -32,6 +32,7 @@ library(parsedate)
 library(lubridate)
 library(grid)
 library(gridExtra)
+library(githubr)
 
 synapseClient::synapseLogin()
 

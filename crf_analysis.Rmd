@@ -1,0 +1,457 @@
+---
+title:  'CRF Algo testing'
+Author: 'Meghasyam Tummalacherla'
+email: 'meghasyam@sagebase.org'
+---
+
+
+```{r knit2synapse, eval=FALSE}
+library(knitr)
+library(synapseClient)
+
+synapseClient::synapseLogin()
+
+knit2synapse::knitToFolderEntity(file = './crf_analysis.Rmd',
+                                 parentId = 'syn12277900',
+                                 entityName = 'CRF Analysis (old algo)')
+```
+
+```{r libs, echo=FALSE, message=FALSE, include=FALSE, warning=FALSE}
+################################################
+## Required Libraries
+################################################
+# devtools::install_github('itismeghasyam/mpowertools')
+library(data.table)
+library(tidyr)
+library(plyr)
+library(dplyr)
+library(seewave)
+# library(mpowertools) 
+library(ggplot2)
+library(parsedate)
+library(lubridate)
+library(grid)
+library(gridExtra)
+
+synapseClient::synapseLogin()
+
+options(xtable.type='html')
+knitr::opts_chunk$set(
+  echo = F,
+  warning = F,
+  message = F,
+  error = F,
+  tidy = F,
+  cache = T,
+  cache.lazy = T
+)
+```
+
+```{r fncs, include=TRUE}
+################################################
+## Required Functions
+################################################
+getHrFromJson <- function(hrJsonFileLoc=NA, windowLen = 10, freqRange = c(1,25), bpforder = 128){
+  
+  #############################################################
+  # Main Code Block
+  #############################################################
+  
+  # If no json file exists
+  dat1 = list(red = NA, green = NA, blue = NA, error = NA, samplingRate = NA)
+  if(is.na(hrJsonFileLoc)){dat1$error = 'No JSON file'; return(dat1) }
+  
+  # Get HR data
+  dat = tryCatch({ jsonlite::fromJSON(as.character(hrJsonFileLoc)) }, 
+                 error = function(e){ NA })
+  if(all(is.na(dat))){dat1$error = 'JSON file read error'; return(dat1) }
+  
+  # Get sampling rate
+  samplingRate = tryCatch({ length(dat$timestamp)/(dat$timestamp[length(dat$timestamp)] - dat$timestamp[1]) }, 
+                          error = function(e){ NA })
+  if(!is.finite(samplingRate)){dat1$error = 'Sampling Rate calculated from timestamp is Inf or NaN / timestamp not found in json'; return(dat1) }
+  if(samplingRate < 55){if(samplingRate > 22){bpforder = 64}else{bpforder = 32}}
+  dat1$samplingRate = samplingRate
+  # Convert window length from seconds to samples
+  windowLen = round(samplingRate*windowLen)
+  
+  # Apply pre processing filter signal between freqRange
+  mforder = 2*round(60*samplingRate/220) + 1 # order for the running mean based filter
+  
+  # Split each color into segments based on windowLen
+  dat = tryCatch({ dat %>% dplyr::select(red, green, blue) %>% lapply(mpowertools:::windowSignal, windowLen, ovlp=0.5) }, 
+                 error = function(e){ NA })
+  if(all(is.na(dat))){dat1$error = 'red, green, blue cannot be read from JSON'; return(dat1) }
+  
+  # Apply filter to each segment of each color
+  dat <- dat %>% lapply(function(dfl){
+    dfl[is.na(dfl)] <- 0
+    dfl = tryCatch({
+      apply(dfl,2,getfilteredsignal,mforder,bpforder, freqRange,samplingRate)}, error = function(e){ NA })
+  })
+  if(all(is.na(dat))){dat1$error = 'filtering error'; return(dat1) }
+  
+  # Get HR for each filtered segment of each color
+  dat <- dat %>% lapply(function(dfl){
+    dfl = tryCatch({
+      apply(dfl,2,getHR,samplingRate)}, error = function(e){ NA })
+    dfl = as.data.frame(t(dfl))
+    colnames(dfl) = c('hr','confidence')
+    return(dfl)
+  })
+  if(all(is.na(dat))){dat1$error = 'HR calculation error'; return(dat1) }
+  
+  dat$error = 'none'
+  if(samplingRate < 55){dat$error = 'Low Sampling Rate,atleast 55FPS needed'}
+  dat$samplingRate = samplingRate
+  return(dat)
+  
+}
+
+# Bandpass and sorted mean filter the given signal
+
+getfilteredsignal <- function(x, mforder = 33, bpforder = 128, freqRange=c(2,25), samplingRate){
+  
+  # Defaults are set for 60Hz sampling rate
+  x[is.na(x)]<-0
+  x = x-mean(x) #Mean centering the signal
+  
+  # Bandpass filter the given time series data
+  if(samplingRate > 55){ 
+    bandPassFilt = signal::fir1(bpforder-1, c(freqRange[1] * 2/samplingRate, freqRange[2] * 2/samplingRate),
+                                type="pass", 
+                                window = seewave::hamming.w(bpforder))
+  }else{
+    bandPassFilt = signal::fir1(bpforder, freqRange[1] * 2/samplingRate, # the order for a high pass filter needs to be even
+                                type="high", 
+                                window = seewave::hamming.w(bpforder+1))   
+  }
+  
+  x = signal::filtfilt(bandPassFilt, x)
+  x = x[((bpforder/2)+1):(length(x)-(bpforder/2)+1)]
+  
+  # Sorted Mean filter the given signal
+  y = 0*x
+  for (i in seq((mforder+1)/2, length(x)-(mforder-1)/2,1)){
+    tempseq <- (x[(i-((mforder-1)/2)):((i+((mforder-1)/2)))])
+    # Old Algo -->
+    y[i] = x[i]-(sum(tempseq)-max(tempseq))/(mforder-1)
+    
+    # New Algo -->
+    # tempseq <- tempseq - mean(tempseq)
+    # y[i] = (((x[i] - max(tempseq) - min(tempseq))-(sum(tempseq)-max(tempseq))/(mforder-1))/(max(tempseq)-min(tempseq) + 0.0000001))
+    
+    # Additional Changes to algo if to be made, this construes skewing the input after scaling
+    # y[i] = sign(y[i])*sqrt(abs(y[i]))
+  }
+  return(y)
+}
+
+# Given a processed time series find its period using autocorrelation and then convert it to HR (bpm)
+
+getHR <- function(x, samplingRate, minHR = 40, maxHR=200){
+  x[is.na(x)] <- 0
+  x <- stats::acf(x,lag.max = 1000, plot=F)$acf
+  y <- 0*x
+  y[round(60*samplingRate/maxHR):round(60*samplingRate/minHR)] = x[round(60*samplingRate/maxHR):round(60*samplingRate/minHR)]
+  confidence = max(y)/max(x)
+  hr = 60*samplingRate/(which.max(y)-1)
+  
+  # If hr or condidence is NaN, then return hr = 0 and confidence = 0
+  if(is.na(confidence) || is.na(hr)){
+    confidence = NA
+    hr = NA
+  }
+  
+  return(c(hr, confidence))
+}
+
+polarToHR <- function(fileName){
+  polar <- read.table(fileName) %>% unlist()
+  y <- rep(0, sum(polar))
+  
+  for (i in seq(length(polar))){
+    y[sum(polar[1:i])] <- 60*1000/polar[i]
+  }
+  return(y)
+}
+
+avgpolarhr <- function(polarToHROutput, windowLen){
+  windowLen <- round(1000*windowLen)
+  nFrames <- floor(length(polarToHROutput)/(windowLen/2))-1
+  y <- rep(0, nFrames)
+  
+  for (frameNo in seq(nFrames)){
+    currFrame <- polarToHROutput[(1+((frameNo-1)*windowLen/2)) : ((frameNo+1)*windowLen/2)]
+    y[frameNo] <- mean(currFrame[currFrame>0])
+  }
+  return(y)
+}
+```
+
+``` {r loadData, calculate HR, echo=FALSE, include=FALSE}
+################################################
+## iPhone data filenames(also paths as we are in the same working directory)
+################################################
+
+# If downloaded onto local directory
+filenameList = c('megha_postjog.json','megha_rest.json','phil_postjog.json',
+                 'phil_rest.json','robert_postjog.json','robert_rest.json',
+                 'thomas_postjog.json','thomas_rest.json')
+
+# If downloading from Synapse, download files onto local directory from 'syn12177531'
+
+################################################
+## Calculate the HR from red, green, blue channeles along with associated confidence values
+################################################
+
+hr.calc = lapply(filenameList,function(x){ 
+  tryCatch({getHrFromJson(x)},
+           error = function(e){ NA })
+}) 
+
+# reshaping data
+hr.calc.table = lapply(hr.calc, function(ele){
+  temp = list()
+  temp$error <- ele$error
+  temp$samplingRate <- ele$samplingRate
+  temp$redHR <-   tryCatch({unlist(ele$red$hr)}, error = function(e){ NA })
+  temp$redConf <- tryCatch({unlist(ele$red$confidence)}, error = function(e){ NA })
+  temp$greenHR <- tryCatch({unlist(ele$green$hr)}, error = function(e){ NA })
+  temp$greenConf <- tryCatch({unlist(ele$green$confidence)}, error = function(e){ NA })
+  temp$blueHR <- tryCatch({unlist(ele$blue$hr)}, error = function(e){ NA })
+  temp$blueConf <- tryCatch({unlist(ele$blue$confidence)}, error = function(e){ NA })
+  return(temp)
+})
+
+hr.calc.table <- data.frame(t(data.table::rbindlist(list(hr.calc.table)) %>% as.data.frame))
+colnames(hr.calc.table) <- c('error','samplingRate','redHR','redConf','greenHR','greenConf','blueHR','blueConf')
+hr.calc.table$file <- filenameList
+
+# Expand each HR reading for each record(row) into a seperate row for each window
+aa <- apply(hr.calc.table,1,function(rown){
+  window  <- max(length(rown$redHR), length(rown$greenHR), length(rown$blueHR))
+  temp <- data.frame(rown,window)
+  temp$window <- paste0('Window',1:window)
+  temp$redHR <- as.numeric(rown$redHR)
+  temp$greenHR <- as.numeric(rown$greenHR)
+  temp$blueHR <- as.numeric(rown$blueHR)
+  temp$redConf <- as.numeric(rown$redConf)
+  temp$greenConf <- as.numeric(rown$greenConf)
+  temp$blueConf <- as.numeric(rown$blueConf)
+  temp$createdOn <- rep(hr.calc.table[hr.calc.table$recordId == temp$recordId[1],]$createdOn, window)
+  polar <- avgpolarhr(polarToHR(gsub('.json','.txt',rown$file)),10)
+  temp$polar <- c(polar, rep(NA,window-length(polar)))
+  return(temp)
+}) %>% cbind %>% ldply(data.frame)
+hr.calc.table <- copy(aa)
+rm(aa)
+```
+# Confidence graphs metrics
+## HR from each channel vs Polar (R2 graphs)
+```{r HR from each channel vs Polar (R2 graphs), include=TRUE}
+################################################
+## Confidence graphs metrics
+################################################
+
+### 1
+# HR from each channel vs Polar (R2 graphs)
+fit <- lm(redHR ~ polar, data=hr.calc.table)
+coefData <- coef(fit)
+p1 <- ggplot(hr.calc.table, aes(x=redHR, y= polar)) + geom_point() + geom_abline(intercept = coefData[1], slope = coefData[2]) +
+ xlim(40,150) + ylim(40,150) +labs(title = paste0('red-R2: ', format(summary(fit)$r.squared, digits=4)))
+  
+fit <- lm(greenHR ~ polar, data=hr.calc.table)
+coefData <- coef(fit)
+p2 <- ggplot(hr.calc.table, aes(x=greenHR, y= polar)) + geom_point() + geom_abline(intercept = coefData[1], slope = coefData[2]) +
+  xlim(40,150) + ylim(40,150) +labs(title = paste0('green-R2: ', format(summary(fit)$r.squared, digits=4)))
+
+fit <- lm(blueHR ~ polar, data=hr.calc.table)
+coefData <- coef(fit)
+p3 <- ggplot(hr.calc.table, aes(x=blueHR, y= polar)) + geom_point() + geom_abline(intercept = coefData[1], slope = coefData[2]) +
+  xlim(40,150) + ylim(40,150) +labs(title = paste0('red-R2: ', format(summary(fit)$r.squared, digits=4)))
+ggpubr::ggarrange(p1,p2,p3, ncol=1,nrow=3)
+
+```
+
+## Confidence vs R2 graphs
+```{r Confidence vs R2 graphs, include=TRUE}
+### 2
+# Confidence vs R2 graphs
+confidenceBins <- seq(0,10)/10
+confidenceNumbers <- list()
+confidenceNumbers$minconf <- confidenceBins[1:10]
+confidenceNumbers$maxconf <- confidenceBins[2:11]
+confidenceNumbers$red <- rep(NA, 10)
+confidenceNumbers$green <- rep(NA, 10)
+confidenceNumbers$blue <- rep(NA, 10)
+
+# red
+R2Values <- seq(1,10)
+for (i in seq(1,10)){
+  temp <- hr.calc.table %>% dplyr::filter(hr.calc.table$redConf >= confidenceBins[i], hr.calc.table$redConf < confidenceBins[i+1]) %>%
+          dplyr::select(redHR, polar)
+  
+  confidenceNumbers$red[i] <- length(temp$redHR)
+  
+  if (length(temp$redHR) >1){
+    fit <- lm(redHR ~ polar, data=temp)
+    R2Values[i] <- summary(fit)$r.squared
+  }else{
+    R2Values[i] <- NA
+  }
+}
+
+plotData <- list()
+plotData$conf <- confidenceBins[1:10]
+plotData$R2Values <- R2Values
+plotData <- data.frame(plotData)
+p1 <- ggplot(plotData, aes(x=conf, y= R2Values)) + geom_point() +
+  labs(title = 'redConf vs R2') + xlim(0,1) + ylim(0,1)
+confidenceNumbers$redR2 <- R2Values
+
+# green
+R2Values <- seq(1,10)
+for (i in seq(1,10)){
+  temp <- hr.calc.table %>% dplyr::filter(hr.calc.table$greenConf >= confidenceBins[i], hr.calc.table$greenConf < confidenceBins[i+1]) %>%
+    dplyr::select(greenHR, polar)
+  
+  confidenceNumbers$green[i] <- length(temp$greenHR)
+  
+    if (length(temp$greenHR) >1){
+    fit <- lm(greenHR ~ polar, data=temp)
+    R2Values[i] <- summary(fit)$r.squared
+  }else{
+    R2Values[i] <- NA
+  }
+}
+plotData$R2Values <- R2Values
+p2 <- ggplot(plotData, aes(x=conf, y= R2Values)) + geom_point() +
+  labs(title = 'greenConf vs R2') + xlim(0,1) + ylim(0,1)
+confidenceNumbers$greenR2 <- R2Values
+
+# blue 
+R2Values <- seq(1,10)
+for (i in seq(1,10)){
+  temp <- hr.calc.table %>% dplyr::filter(hr.calc.table$blueConf >= confidenceBins[i], hr.calc.table$blueConf < confidenceBins[i+1]) %>%
+    dplyr::select(blueHR, polar)
+  
+  confidenceNumbers$blue[i] <- length(temp$blueHR)
+  
+  if (length(temp$blueHR) >1){
+    fit <- lm(blueHR ~ polar, data=temp)
+    R2Values[i] <- summary(fit)$r.squared
+  }else{
+    R2Values[i] <- NA
+  }
+}
+plotData$R2Values <- R2Values
+p3 <- ggplot(plotData, aes(x=conf, y= R2Values)) + geom_point() +
+  labs(title = 'blueConf vs R2') + xlim(0,1) + ylim(0,1)
+confidenceNumbers$blueR2 <- R2Values
+confidenceNumbers <- data.frame(confidenceNumbers)
+ggpubr::ggarrange(p1,p2,p3, ncol = 1, nrow = 3)
+```
+
+## PMF of the confidence across red, green and blue
+```{r PMF of the confidence across red green and blue, include=TRUE}
+### 3
+# PMF of the confidence across red, green and blue
+p1 <- qplot(hr.calc.table$redConf,
+      geom = 'histogram',
+      breaks = seq(0,1,by=0.1),
+      xlab = 'red-Conf',
+      ylab = 'no. of windows',
+      main = 'red Conf PMF',
+      fill = I('grey'),
+      col = I('red'),
+      alpha = I(.2),
+      xlim = c(0,1))
+p2 <- qplot(hr.calc.table$greenConf,
+            geom = 'histogram',
+            breaks = seq(0,1,by=0.1),
+            xlab = 'green-Conf',
+            ylab = 'no. of windows',
+            main = 'green Conf PMF',
+            fill = I('grey'),
+            col = I('darkgreen'),
+            alpha = I(.2),
+            xlim = c(0,1))
+p3 <- qplot(hr.calc.table$blueConf,
+            geom = 'histogram',
+            breaks = seq(0,1,by=0.1),
+            xlab = 'blue-Conf',
+            ylab = 'no. of windows',
+            main = 'blue Conf PMF',
+            fill = I('grey'),
+            col = I('blue'),
+            alpha = I(.2),
+            xlim = c(0,1))
+ggpubr::ggarrange(p1,p2,p3, ncol=1, nrow = 3)
+
+```
+
+## Confidence vs absolute error
+```{r Confidence vs absolute error, include=TRUE}
+### plot 4
+# Confidence vs absolute error
+plotData <- list()
+plotData$conf  <- hr.calc.table$redConf 
+plotData$absError <-  abs(hr.calc.table$redHR - hr.calc.table$polar)
+plotData <- data.frame(plotData)
+fit <- lm(conf ~ absError, data=plotData)
+coefData <- coef(fit)
+p1 <- ggplot(plotData, aes(x=conf, y= absError)) + geom_point() + geom_abline(intercept = coefData[1], slope = coefData[2]) +labs(title = 'red- error vs conf')
+
+plotData$conf  <- hr.calc.table$greenConf 
+plotData$absError <-  abs(hr.calc.table$greenHR - hr.calc.table$polar)
+fit <- lm(conf ~ absError, data=plotData)
+coefData <- coef(fit)
+p2 <- ggplot(plotData, aes(x=conf, y= absError)) + geom_point() + geom_abline(intercept = coefData[1], slope = coefData[2]) +labs(title = 'green- error vs conf')
+
+plotData$conf  <- hr.calc.table$blueConf 
+plotData$absError <-  abs(hr.calc.table$blueHR - hr.calc.table$polar)
+fit <- lm(conf ~ absError, data=plotData)
+coefData <- coef(fit)
+p3 <- ggplot(plotData, aes(x=conf, y= absError)) + geom_point() + geom_abline(intercept = coefData[1], slope = coefData[2]) +labs(title = 'blue- error vs conf')
+
+ggpubr::ggarrange(p1,p2,p3,ncol = 1, nrow = 3)
+
+```
+
+## Percent of things we are getting right
+```{r percent correct}
+####### Percent of things we are getting right
+redPercent <- 100*(sum(confidenceNumbers %>% dplyr::filter(abs(redR2) > 0.8)  %>%
+                     select(red) %>% unlist() ))/sum(confidenceNumbers$red)
+greenPercent <- 100*(sum(confidenceNumbers %>% dplyr::filter(abs(greenR2) > 0.8)  %>%
+                         select(green) %>% unlist() ))/sum(confidenceNumbers$red)
+bluePercent <- 100*(sum(confidenceNumbers %>% dplyr::filter(abs(blueR2) > 0.8)  %>%
+                         select(blue) %>% unlist() ))/sum(confidenceNumbers$red)
+
+print('Fraction of records that have R2 > 0.8, for across confidence intervals (i.e say 0.1-0.2, 0.7-0.8,..)')
+print(c('red correct percent: ',redPercent))
+print(c('green correct percent: ',greenPercent))
+print(c('blue correct percent: ',bluePercent))
+```
+
+```{r syn.store, eval=TRUE, cache=FALSE}
+CODE = Folder(name='CRF Analysis (old algo)',
+              parentId = 'syn12277900')
+CODE = synapseClient::synStore(CODE)
+
+save(list=c('hr.calc.table','confidenceNumbers'),
+     file='crfAnalysis.RData')
+
+# Github link
+gtToken = 'github_token.txt';
+githubr::setGithubToken(as.character(read.table(gtToken)$V1))
+thisFileName <- 'crf_analysis.Rmd'
+thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
+thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
+
+obj = File('crfAnalysis.RData',
+           name='CRF Analysis Data',
+           parentId = CODE@properties$id)
+obj = synapseClient::synStore(obj,used = 'syn12177531', executed = thisFile)
+```

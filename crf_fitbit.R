@@ -1,0 +1,97 @@
+########################################################################
+# CRF Project 
+# Purpose: To study the Fitbit data and make a table out of it 
+# Author: Meghasyam Tummalacherla
+# email: meghasyam@sagebase.org
+########################################################################
+rm(list=ls())
+gc()
+devtools::install_github('itismeghasyam/mpowertools')
+
+##############
+# Required libraries
+##############
+library(data.table)
+library(tidyr)
+library(plyr)
+library(dplyr)
+library(seewave)
+library(mpowertools) 
+library(synapseClient)
+#library(githubr)
+library(ggplot2)
+library(parsedate)
+library(lubridate)
+library(jsonlite)
+
+synapseLogin()
+
+#############
+# Download Synapse Table, and select and download required columns, figure out filepath locations
+#############
+
+## Reference Table
+ref.tableId = 'syn11665074'
+ref.name = 'Cardio 12MT-v5'
+
+# ref.tableId = 'syn11580624'
+# ref.name = 'Cardio Stress Test-v1'
+
+# ref.tableId = 'syn11432994'
+# ref.name = 'Cardio Stair Step-v1'
+
+ref.tbl <- synTableQuery(paste('select * from', ref.tableId))@values
+ref.tbl <- ref.tbl %>% dplyr::select(recordId, healthCode, createdOn, createdOnTimeZone) %>% 
+  dplyr::mutate(createdDate = as.character(as.Date.character(createdOn))) %>% unique()
+
+all.used.ids = ref.tableId
+
+tableId = 'syn11673533'
+name = 'HeartRate activities heart intraday'
+
+all.used.ids = c(all.used.ids, tableId)
+columnsToSelect = c('healthCode','createdDate','dataset','datasetInterval','datasetType')
+columnsToDownload = c('dataset')
+
+fitbit.tbl = synTableQuery(paste('select * from', tableId))
+
+fitbit.tbl@values = fitbit.tbl@values %>% dplyr::select(columnsToSelect)  
+
+fitbit.json.loc = lapply(columnsToDownload, function(col.name){
+  tbl.files = synDownloadTableColumns(fitbit.tbl, col.name) %>%
+    lapply(function(x) data.frame(V1 = x)) %>% 
+    data.table::rbindlist(idcol = col.name) %>% 
+    plyr::rename(c('V1' = paste0(col.name,'.fileLocation')))
+})
+
+fitbit.table.meta = data.table::rbindlist(list(fitbit.tbl@values %>%
+                                             left_join(do.call(cbind, fitbit.json.loc))),
+                                      use.names = T, fill = T)%>%as.data.frame
+
+fitbit.common.ref <- fitbit.table.meta %>% dplyr::inner_join(ref.tbl)
+
+fitbit.hr.tbl <- apply(fitbit.common.ref,1,function(x){ 
+  tryCatch({dat <- jsonlite::fromJSON(as.character(x['dataset.fileLocation']))
+  dat <- dat %>% dplyr::mutate(recordId = x['recordId'])},
+           error = function(e){ NA })
+}) %>% plyr::ldply(data.frame) %>% dplyr::select(time, value, recordId) %>% dplyr::rename('fitbitHR' = 'value') %>% 
+  na.omit()
+
+#############
+# Upload to Synapse
+#############
+
+# Github link
+gtToken = 'github_token.txt';
+githubr::setGithubToken(as.character(read.table(gtToken)$V1))
+thisFileName <- 'crf_fitbit.R'
+thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
+thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
+
+# Write to Synapse
+write.csv(fitbit.hr.tbl,file = paste0('fitbit',name,'.csv'),na="")
+obj = File(paste0('fitbit',name,'.csv'), 
+           name = paste0('fitbit',name,'.csv'), 
+           parentId = 'syn11968320')
+obj = synStore(obj,  used = all.used.ids, executed = thisFile)
+

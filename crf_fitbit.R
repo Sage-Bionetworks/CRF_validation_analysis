@@ -18,7 +18,7 @@ library(dplyr)
 library(seewave)
 library(mpowertools) 
 library(synapseClient)
-#library(githubr)
+library(githubr)
 library(ggplot2)
 library(parsedate)
 library(lubridate)
@@ -89,9 +89,9 @@ thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="b
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse
-write.csv(fitbit.hr.tbl,file = paste0('fitbit',name,'.csv'),na="")
-obj = File(paste0('fitbit',name,'.csv'), 
-           name = paste0('fitbit',name,'.csv'), 
+write.csv(fitbit.hr.tbl,file = paste0('fitbit',ref.name,'.csv'),na="")
+obj = File(paste0('fitbit',ref.name,'.csv'), 
+           name = paste0('fitbit',ref.name,'.csv'), 
            parentId = 'syn11968320')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 

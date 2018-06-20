@@ -42,14 +42,14 @@ getStartAndStopTime <- function(hrJsonFileLoc){
 #############
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #############
-# tableId = 'syn11665074'
-# name = 'Cardio 12MT-v5'
+tableId = 'syn11665074'
+name = 'Cardio 12MT-v5'
  
 # tableId = 'syn11580624'
 # name = 'Cardio Stress Test-v1'
 
-tableId = 'syn11432994'
-name = 'Cardio Stair Step-v1'
+# tableId = 'syn11432994'
+# name = 'Cardio Stair Step-v1'
 
 all.used.ids = tableId
 columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json') # For Cardio 12MT
@@ -225,6 +225,10 @@ hr.after.table <- copy(aa)
 rm(aa)
 
 hr.results <- rbind(hr.after.table, hr.before.table) %>% dplyr::left_join(hr.times)
+
+# Change start and stop time to reflect start and stop time of each window, not record
+hr.results <- hr.results %>% dplyr::mutate(startTime = startTime + 5*(as.numeric(gsub('Window','',window))-1)) %>% 
+  dplyr::mutate(stopTime = startTime+10)
 
 # Github link
 gtToken = 'github_token.txt';

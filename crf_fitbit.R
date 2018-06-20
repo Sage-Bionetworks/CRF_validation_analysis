@@ -31,14 +31,14 @@ synapseLogin()
 #############
 
 ## Reference Table
-ref.tableId = 'syn11665074'
-ref.name = 'Cardio 12MT-v5'
+# ref.tableId = 'syn11665074'
+# ref.name = 'Cardio 12MT-v5'
 
 # ref.tableId = 'syn11580624'
 # ref.name = 'Cardio Stress Test-v1'
 
-# ref.tableId = 'syn11432994'
-# ref.name = 'Cardio Stair Step-v1'
+ref.tableId = 'syn11432994'
+ref.name = 'Cardio Stair Step-v1'
 
 ref.tbl <- synTableQuery(paste('select * from', ref.tableId))@values
 ref.tbl <- ref.tbl %>% dplyr::select(recordId, healthCode, createdOn, createdOnTimeZone) %>% 
@@ -72,10 +72,15 @@ fitbit.common.ref <- fitbit.table.meta %>% dplyr::inner_join(ref.tbl)
 
 fitbit.hr.tbl <- apply(fitbit.common.ref,1,function(x){ 
   tryCatch({dat <- jsonlite::fromJSON(as.character(x['dataset.fileLocation']))
-  dat <- dat %>% dplyr::mutate(recordId = x['recordId'])},
+  dat <- dat %>% dplyr::mutate(recordId = x['recordId'])
+  dat <- dat %>% dplyr::mutate(createdDate = x['createdDate'])},
            error = function(e){ NA })
-}) %>% plyr::ldply(data.frame) %>% dplyr::select(time, value, recordId) %>% dplyr::rename('fitbitHR' = 'value') %>% 
+}) %>% plyr::ldply(data.frame) %>% dplyr::select(time, value, recordId, createdDate) %>% dplyr::rename('fitbitHR' = 'value') %>% 
   na.omit()
+
+# Merge createdDate and time to create a timestamp and convert that into POSIXlt format
+fitbit.hr.tbl$timestamp <- apply(fitbit.hr.tbl[,c('createdDate','time')],1,paste, collapse=' ')
+fitbit.hr.tbl$timestamp <- strptime(fitbit.hr.tbl$timestamp, format = '%Y-%m-%d %H:%M:%S')
 
 #############
 # Upload to Synapse

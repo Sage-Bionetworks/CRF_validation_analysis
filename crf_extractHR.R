@@ -28,12 +28,34 @@ synapseLogin()
 #############
 # Required functions
 #############
+
+getTimeZone = function(time)
+{
+  last = substring(time, nchar(time), nchar(time));
+  if(last == 'Z')
+  {
+    return(0);
+  }
+  else
+  {
+    mins = as.numeric(substring(time, nchar(time)-1, nchar(time)));
+    hours = as.numeric(substring(time, nchar(time)-4, nchar(time)-3));
+    signt = substring(nchar(time)-5,nchar(time)-5)
+    
+    if(signt == '-'){
+    return(timezone = hours + mins/60);
+    }else{
+    return(timezone = -(hours + mins/60));
+  }
+}
+}
+
 getStartAndStopTime <- function(hrJsonFileLoc){
   # Column containing reference timepoint is timestampDate
   # Column containing time (with respect to the reference point) is timestamp
   
   dat <- jsonlite::fromJSON(as.character(hrJsonFileLoc))
-  startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S')
+  startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') -  60*60*getTimeZone(dat$timestampDate[1])
   stopTime <- startTime + dat$timestamp[length(dat$timestamp)]
   
   return(list(startTime = startTime, stopTime = stopTime))

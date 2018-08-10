@@ -8,7 +8,6 @@ rm(list=ls())
 gc()
 devtools::install_github('itismeghasyam/mpowertools')
 
-
 ##############
 # Required libraries
 ##############
@@ -27,20 +26,58 @@ library(lubridate)
 synapseLogin()
 
 #############
+# Required functions
+#############
+
+getTimeZone = function(time)
+{
+  last = substring(time, nchar(time), nchar(time));
+  if(last == 'Z')
+  {
+    return(0);
+  }
+  else
+  {
+    mins = as.numeric(substring(time, nchar(time)-1, nchar(time)));
+    hours = as.numeric(substring(time, nchar(time)-4, nchar(time)-3));
+    signt = substring(nchar(time)-5,nchar(time)-5)
+    
+    if(signt == '-'){
+    return(timezone = hours + mins/60);
+    }else{
+    return(timezone = -(hours + mins/60));
+  }
+}
+}
+
+getStartAndStopTime <- function(hrJsonFileLoc){
+  # Column containing reference timepoint is timestampDate
+  # Column containing time (with respect to the reference point) is timestamp
+  
+  dat <- jsonlite::fromJSON(as.character(hrJsonFileLoc))
+  startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') -  60*60*getTimeZone(dat$timestampDate[1])
+  stopTime <- startTime + dat$timestamp[length(dat$timestamp)]
+  
+  return(list(startTime = startTime, stopTime = stopTime))
+}
+
+#############
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #############
-# tableId = 'syn11665074'
-# name = 'Cardio 12MT-v5'
+tableId = 'syn11665074'
+name = 'Cardio 12MT-v5'
  
 # tableId = 'syn11580624'
 # name = 'Cardio Stress Test-v1'
 
-tableId = 'syn11432994'
-name = 'Cardio Stair Step-v1'
+# tableId = 'syn11432994'
+# name = 'Cardio Stair Step-v1'
 
 all.used.ids = tableId
 columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json') # For Cardio 12MT
-columnsToSelect = c('recordId', 'healthCode','externalId','dataGroups','appVersion','createdOn','phoneInfo','heartRate_before_recorder.json','heartRate_after_recorder.json') # For Cardio 12MT
+columnsToSelect = c('recordId', 'healthCode','externalId','dataGroups','appVersion','createdOn',
+                    'createdOnTimeZone','phoneInfo','metadata.startDate','metadata.endDate',
+                    'heartRate_before_recorder.json','heartRate_after_recorder.json') # For Cardio 12MT
 hr.tbl = synTableQuery(paste('select * from', tableId))
 hr.tbl@values = hr.tbl@values %>% dplyr::select(columnsToSelect)  
 
@@ -60,6 +97,25 @@ hr.table.meta = data.table::rbindlist(list(hr.tbl@values %>%
 hr.table.meta <- hr.table.meta[grep('PMI', hr.table.meta$externalId),]
 rownames(hr.table.meta) <- hr.table.meta$recordId
 hr.table.meta$originalTable = rep(tableId, nrow(hr.table.meta))
+
+#############
+# Extract start and stop time for each row
+#############
+
+hr.before.times <- apply(hr.table.meta,1,function(x){ 
+  tryCatch({getStartAndStopTime(as.character(x['heartRate_before_recorder.fileLocation']))},
+           error = function(e){ NA })
+}) %>% plyr::ldply(data.frame) %>% dplyr::rename('recordId' = '.id') %>% dplyr::select(recordId, startTime, stopTime) %>% 
+  dplyr::mutate(Assay = 'before')
+
+hr.after.times <- apply(hr.table.meta,1,function(x){ 
+  tryCatch({getStartAndStopTime(as.character(x['heartRate_after_recorder.fileLocation']))},
+           error = function(e){ NA })
+}) %>% plyr::ldply(data.frame) %>% dplyr::rename('recordId' = '.id') %>% dplyr::select(recordId, startTime, stopTime) %>% 
+  dplyr::mutate(Assay = 'after')
+
+hr.times <- rbind(hr.before.times, hr.after.times)
+
 #############
 # Extract HR for each row
 #############
@@ -106,6 +162,7 @@ hr.after.table = lapply(hr.after, function(ele){
   temp$blueConf <- tryCatch({unlist(ele$blue$confidence)}, error = function(e){ NA })
   return(temp)
 })
+
 ############
 # !!!! FIND RED FLAGS: RECORDS WITH FAILED HR EXTRACTIONS
 ############
@@ -136,14 +193,12 @@ for (i in 1:length(hr.after)){
   a <- c(a, dim(hr.after[[i]]$red)[1])
   }
 
-
 # Subset the failed records and their details(columnsToSelect)
 #Note: These include low sampling rate errors too, crosscheck with the hr.table.meta
 # to find out more, and look at hr.before to see the results
 hr.error.records = hr.table.meta[a,]
 hr.before.error = hr.before[names(hr.before) %in% hr.error.records$recordId]
 hr.after.error = hr.after[names(hr.after) %in% hr.error.records$recordId]
-
 
 # Put hr.after and hr.before in dataframes so that exporting to tsv/csv is easier
 hr.after.table <- data.frame(t(data.table::rbindlist(list(hr.after.table)) %>% as.data.frame))
@@ -191,7 +246,11 @@ aa <- apply(hr.after.table,1,function(rown){
 hr.after.table <- copy(aa)
 rm(aa)
 
-hr.results <- rbind(hr.after.table, hr.before.table)
+hr.results <- rbind(hr.after.table, hr.before.table) %>% dplyr::left_join(hr.times)
+
+# Change start and stop time to reflect start and stop time of each window, not record
+hr.results <- hr.results %>% dplyr::mutate(startTime = startTime + 5*(as.numeric(gsub('Window','',window))-1)) %>% 
+  dplyr::mutate(stopTime = startTime+10)
 
 # Github link
 gtToken = 'github_token.txt';
@@ -200,11 +259,9 @@ thisFileName <- 'crf_extractHR.R'
 thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
-
 # Write to Synapse
 write.csv(hr.results,file = paste0('hr_results',name,'.csv'),na="")
 obj = File(paste0('hr_results',name,'.csv'), 
            name = paste0('hr_results',name,'.csv'), 
            parentId = 'syn11968320')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)
-

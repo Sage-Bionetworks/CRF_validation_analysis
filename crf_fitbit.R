@@ -31,14 +31,14 @@ synapseLogin()
 #############
 
 ## Reference Table
-ref.tableId = 'syn11665074'
-ref.name = 'Cardio 12MT-v5'
+# ref.tableId = 'syn11665074'
+# ref.name = 'Cardio 12MT-v5'
 
 # ref.tableId = 'syn11580624'
 # ref.name = 'Cardio Stress Test-v1'
 
-# ref.tableId = 'syn11432994'
-# ref.name = 'Cardio Stair Step-v1'
+ref.tableId = 'syn11432994'
+ref.name = 'Cardio Stair Step-v1'
 
 ref.tbl <- synTableQuery(paste('select * from', ref.tableId))@values
 ref.tbl <- ref.tbl %>% dplyr::select(recordId, healthCode, createdOn, createdOnTimeZone) %>% 
@@ -66,21 +66,40 @@ fitbit.json.loc = lapply(columnsToDownload, function(col.name){
 
 fitbit.table.meta = data.table::rbindlist(list(fitbit.tbl@values %>%
                                              left_join(do.call(cbind, fitbit.json.loc))),
-                                      use.names = T, fill = T)%>%as.data.frame
+                                      use.names = T, fill = T)%>%as.data.frame %>%
+  dplyr::rename('fitbitCreatedDate' = 'createdDate')
 
-fitbit.common.ref <- fitbit.table.meta %>% dplyr::inner_join(ref.tbl)
+hc.timezone.tbl <- ref.tbl %>% 
+  dplyr::select(healthCode, createdOnTimeZone) %>%
+  unique()
+
+# Let us first consider healthCodes that have only one time zone, we will deal with healthCode having
+# multiple timezones later
+
+a <- hc.timezone.tbl %>%
+  dplyr::group_by(healthCode) %>% 
+  dplyr::count() %>% 
+  dplyr::filter(n == 1)
+  
+# Subset healthCodes to healthCodes in one timezone
+hc.timezone.tbl  <- hc.timezone.tbl %>%
+  dplyr::filter(healthCode %in% a$healthCode)
+
+fitbit.common.ref <- fitbit.table.meta %>% dplyr::inner_join(hc.timezone.tbl) %>% unique()
 
 fitbit.hr.tbl <- apply(fitbit.common.ref,1,function(x){ 
   tryCatch({dat <- jsonlite::fromJSON(as.character(x['dataset.fileLocation']))
-  dat <- dat %>% dplyr::mutate(recordId = x['recordId'])
-  dat <- dat %>% dplyr::mutate(createdDate = x['createdDate'])
-  dat <- dat %>% dplyr::mutate(createdOnTimeZone = x['createdOnTimeZone'])},
+  # dat <- dat %>% dplyr::mutate(recordId = x['recordId'])
+  dat <- dat %>% dplyr::mutate(healthCode = x['healthCode'])
+  dat <- dat %>% dplyr::mutate(fitbitCreatedDate = x['fitbitCreatedDate'])
+  dat <- dat %>% dplyr::mutate(createdOnTimeZone = x['createdOnTimeZone'])
+  },
            error = function(e){ NA })
-}) %>% plyr::ldply(data.frame) %>% dplyr::select(time, value, recordId, createdDate, createdOnTimeZone) %>%
-  dplyr::rename('fitbitHR' = 'value') %>% na.omit()
+}) %>% plyr::ldply(data.frame) %>% dplyr::select(time, value, healthCode, fitbitCreatedDate, createdOnTimeZone) %>%
+  dplyr::rename('fitbitHR' = 'value') %>% na.omit() %>% unique()
 
 # Merge createdDate and time to create a timestamp and convert that into POSIXlt format
-fitbit.hr.tbl$timestamp <- apply(fitbit.hr.tbl[,c('createdDate','time')],1,paste, collapse=' ')
+fitbit.hr.tbl$timestamp <- apply(fitbit.hr.tbl[,c('fitbitCreatedDate','time')],1,paste, collapse=' ')
 fitbit.hr.tbl$timestamp <- strptime(fitbit.hr.tbl$timestamp, format = '%Y-%m-%d %H:%M:%S')
 fitbit.hr.tbl$timestamp <- fitbit.hr.tbl$timestamp - 60*60*as.numeric(fitbit.hr.tbl$createdOnTimeZone)/100
 

@@ -35,13 +35,14 @@ name = 'Cardio 12MT-v5'
 # crf.tableId = 'syn12010132'
 # fitbit.tableId = 'syn12550818'
 # name = 'Cardio Stair Step-v1'
-# 
+ 
 # crf.tableId = 'syn12010237'
 # fitbit.tableId = 'syn12550817'
 # name = 'Cardio Stress Test-v1'
 
-crf.tbl <- CovariateAnalysis::downloadFile(crf.tableId)
-fitbit.tbl <- CovariateAnalysis::downloadFile(fitbit.tableId)
+crf.tbl <- CovariateAnalysis::downloadFile(crf.tableId) %>% dplyr::select(-V1)
+fitbit.tbl <- CovariateAnalysis::downloadFile(fitbit.tableId) %>% dplyr::select(-V1)
+all.used.ids <- c(crf.tableId, fitbit.tableId)
 
 # Convert times into POSIXlt format
 fitbit.tbl$timestamp <- strptime(fitbit.tbl$timestamp, format = '%Y-%m-%d %H:%M:%S',tz='') %>% as.POSIXct()
@@ -50,7 +51,7 @@ crf.tbl$stopTime <- strptime(crf.tbl$stopTime, format = '%Y-%m-%d %H:%M:%S',tz='
 
 merged.tbl <- apply(crf.tbl,1,function(x){ 
   tryCatch({
-    fitbit.data <- fitbit.tbl %>% dplyr::filter(recordId == x['recordId']) %>% 
+    fitbit.data <- fitbit.tbl %>% dplyr::filter(healthCode == x['healthCode']) %>% 
     dplyr::filter(timestamp <= x['stopTime']) %>%  dplyr::filter(timestamp >= x['startTime'])
     
     x['fitbit.timestamp'] <- fitbit.data$timestamp[1]

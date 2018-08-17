@@ -334,8 +334,8 @@ thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="b
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse
-write.csv(vo2.estiamtes.tbl,file = paste0('vo2_estimates','.csv'),na="")
-obj = File(paste0('vo2_estimates','.csv'), 
-           name = paste0('vo2_estimates','.csv'), 
+write.csv(vo2.estiamtes.tbl,file = paste0('tecumesh_vo2_estimates','.csv'),na="")
+obj = File(paste0('tecumesh_vo2_estimates','.csv'), 
+           name = paste0('tecumesh_vo2_estimates','.csv'), 
            parentId = 'syn12435196')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)

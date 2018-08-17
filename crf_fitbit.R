@@ -31,14 +31,14 @@ synapseLogin()
 #############
 
 ## Reference Table
-# ref.tableId = 'syn11665074'
-# ref.name = 'Cardio 12MT-v5'
+ref.tableId = 'syn11665074'
+ref.name = 'Cardio 12MT-v5'
 
 # ref.tableId = 'syn11580624'
 # ref.name = 'Cardio Stress Test-v1'
 
-ref.tableId = 'syn11432994'
-ref.name = 'Cardio Stair Step-v1'
+# ref.tableId = 'syn11432994'
+# ref.name = 'Cardio Stair Step-v1'
 
 ref.tbl <- synTableQuery(paste('select * from', ref.tableId))@values
 ref.tbl <- ref.tbl %>% dplyr::select(recordId, healthCode, createdOn, createdOnTimeZone) %>% 
@@ -80,12 +80,38 @@ a <- hc.timezone.tbl %>%
   dplyr::group_by(healthCode) %>% 
   dplyr::count() %>% 
   dplyr::filter(n == 1)
+
+b <- hc.timezone.tbl %>%
+  dplyr::group_by(healthCode) %>% 
+  dplyr::count() %>% 
+  dplyr::filter(n > 1)
   
 # Subset healthCodes to healthCodes in one timezone
-hc.timezone.tbl  <- hc.timezone.tbl %>%
-  dplyr::filter(healthCode %in% a$healthCode)
+hc.timezone.tbl.monoTimeZone  <- hc.timezone.tbl %>%
+  dplyr::filter(healthCode %in% a$healthCode) %>% 
+  unique()
 
-fitbit.common.ref <- fitbit.table.meta %>% dplyr::inner_join(hc.timezone.tbl) %>% unique()
+# Subset healthCodes to healthCodes in multiple timezones
+hc.timezone.tbl.multTimeZone <- ref.tbl %>%
+  dplyr::select(healthCode, createdOnTimeZone, createdDate) %>% 
+  dplyr::filter(healthCode %in% b$healthCode) %>% 
+  unique() %>% 
+  dplyr::rename('fitbitCreatedDate' = 'createdDate')
+
+# Single timezone
+fitbit.common.ref.monoTimeZone <- fitbit.table.meta %>%
+  dplyr::inner_join(hc.timezone.tbl.monoTimeZone) %>%
+  unique()
+
+# Multiple timezones, here we will consider createdOn date from the fitbit table, and from the activity table
+# to break ties in timezones for a healthCode
+fitbit.common.ref.multTimeZone <- fitbit.table.meta %>%
+  dplyr::inner_join(hc.timezone.tbl.multTimeZone) %>%
+  unique()
+
+# Get merged common table for all healthCodes\
+fitbit.common.ref <- rbind(fitbit.common.ref.monoTimeZone,
+                           fitbit.common.ref.multTimeZone)
 
 fitbit.hr.tbl <- apply(fitbit.common.ref,1,function(x){ 
   tryCatch({dat <- jsonlite::fromJSON(as.character(x['dataset.fileLocation']))

@@ -78,9 +78,10 @@ vo2.tbl <- merged.stair.tbl %>%
 vo2.tbl$createdDate <- as.Date.character(vo2.tbl$createdOn)
 
 
-# Add the inClinic column to see if the test was done in the clinic
 # To merge on the dates the experiment was done in clinic to the crf app
 pmi.metadata$createdDate <- as.Date.POSIXct(pmi.metadata$`Field Date`)
+
+# Add the inClinic column to see if the test was done in the clinic
 vo2.tbl <- vo2.tbl %>% 
   dplyr::left_join(pmi.metadata %>% 
                      dplyr::select('createdDate', 'externalId','inClinic')) 

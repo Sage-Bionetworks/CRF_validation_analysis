@@ -38,7 +38,8 @@ synapseLogin()
 # Metadata containing V02 max values, weights etc.,
 metadata.id = 'syn12257142'
 pmi.metadata <- readxl::read_xlsx(synapseClient::synGet(metadata.id)@filePath) %>%
-  dplyr::rename('externalId' = 'CRF User name')
+  dplyr::rename('externalId' = 'CRF User name') %>% 
+  dplyr::mutate('inClinic' = TRUE)
 all.used.ids <- c(metadata.id)
 
 # merged table containing fitbit and crf heart rate values
@@ -61,6 +62,7 @@ stair.times.tableId = 'syn12673572'
 stair.times.tbl <- CovariateAnalysis::downloadFile(stair.times.tableId) %>% dplyr::select(-V1)
 all.used.ids <- c(all.used.ids, stair.times.tableId)
 
+# Get vo2 max tbl with all the required variables
 vo2.tbl <- merged.stair.tbl %>%
   dplyr::select(recordId, healthCode, externalId, createdOn,
                 createdOnTimeZone, samplingRate, redHR, redConf,
@@ -68,13 +70,23 @@ vo2.tbl <- merged.stair.tbl %>%
                 window, startTime, stopTime, fitbit.timestamp, fitbit.hr) %>% 
   dplyr::left_join(stair.times.tbl) %>% 
   dplyr::inner_join(pmi.metadata %>%
-                      dplyr::select('externalId','Sex','Age','Lab Day Wt (kg)')) %>% 
+                      dplyr::select('externalId','Sex','Age','Field Day Wt (kg)')) %>% 
   dplyr::rename('Gender' = 'Sex',
-                'Wt (kg)' = 'Lab Day Wt (kg)')
+                'Wt (kg)' = 'Field Day Wt (kg)')
 
+# Add a createdDate column
+vo2.tbl$createdDate <- as.Date.character(vo2.tbl$createdOn)
+
+
+# Add the inClinic column to see if the test was done in the clinic
+# To merge on the dates the experiment was done in clinic to the crf app
+pmi.metadata$createdDate <- as.Date.POSIXct(pmi.metadata$`Field Date`)
+vo2.tbl <- vo2.tbl %>% 
+  dplyr::left_join(pmi.metadata %>% 
+                     dplyr::select('createdDate', 'externalId','inClinic')) 
+vo2.tbl$inClinic[is.na(vo2.tbl$inClinic)] <- FALSE
 
 # Estimate V02 max
-
 estimateVo2 <- function(pdat){
   ageIn <- pdat$Age[1]
   genderIn <- pdat$Gender[1]
@@ -307,7 +319,11 @@ vo2.estiamtes.tbl <- vo2.tbl %>%
   dplyr::group_by(recordId) %>%
   do(estimateVo2(.)) %>% 
   ungroup() %>% 
-  as.data.frame()
+  as.data.frame() %>% 
+  dplyr::left_join(vo2.tbl %>% 
+                     dplyr::select('recordId','createdDate', 'externalId','inClinic')) %>% 
+  unique()
+
 
 
 ## Refine our data to high confidence scores
@@ -316,14 +332,14 @@ aa.crf <- vo2.estiamtes.tbl %>%
   dplyr::filter(conf15 > 0.5, conf30 > 0.5, conf60 > 0.5) %>% 
   dplyr::select(metric, externalId, age, gender, recordId,
                 vo2Max.Milligan1, vo2Max.Milligan2,vo2Max.Shakey,
-                `Measured VO2max (mL/kg/min)`,`Cooper VO2`)
+                `Measured VO2max (mL/kg/min)`,`Cooper VO2`,inClinic)
 aa.fitbit <- vo2.estiamtes.tbl %>% 
   dplyr::filter(recordId %in% aa.crf$recordId,
                 metric == 'fitbit') %>% 
   dplyr::left_join(pmi.metadata) %>% 
   dplyr::select(metric, externalId, age, gender, recordId,
                 vo2Max.Milligan1, vo2Max.Milligan2,vo2Max.Shakey,
-                `Measured VO2max (mL/kg/min)`,`Cooper VO2`) %>% 
+                `Measured VO2max (mL/kg/min)`,`Cooper VO2`,inClinic) %>% 
   na.omit()
 
 # Github link

@@ -22,16 +22,16 @@ for(file.i in all.files){
     dplyr::select('Time', 'HR..bpm.') %>% 
     dplyr::rename('time' = 'Time',
                   'hr' = 'HR..bpm.')
-    
+  
   a2 <- read.csv(file.i, nrows = 1) %>% 
     dplyr::select('Sport', 'Date', 'Start.time', 'Duration') %>% 
     dplyr::select('sport' = 'Sport',
                   'date' = 'Date',
                   'start.time' = 'Start.time',
                   'duration' = 'Duration') %>% 
-    dplyr::mutate(externalId = substring(file.i,4,6)) 
-  polar_data <- rbind(polar_data, cbind(a1,a2)) %>% 
-    dplyr::mutate(createdOnTimeZone = -800)
+    dplyr::mutate(externalId = substring(file.i,4,6)) %>% 
+    dplyr::mutate(createdOnTimeZone = -800) 
+  polar_data <- rbind(polar_data, cbind(a1,a2)) 
 }
 
 polar_data$start.timestamp <- apply(polar_data[,c('date','start.time')],1,paste,collapse ='')

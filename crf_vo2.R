@@ -42,20 +42,10 @@ pmi.metadata <- readxl::read_xlsx(synapseClient::synGet(metadata.id)@filePath) %
   dplyr::mutate('inClinic' = TRUE)
 all.used.ids <- c(metadata.id)
 
-# merged table containing fitbit and crf heart rate values
+# merged table containing polar, fitbit and crf heart rate values
 merged.stair.tableId = 'syn12612345'
 merged.stair.tbl <- CovariateAnalysis::downloadFile(merged.stair.tableId) %>% dplyr::select(-V1)
 all.used.ids <- c(all.used.ids, merged.stair.tableId)
-
-# CRF table containing CRF HR estimates (for reference, not actually needed)
-crf.stair.tableId = 'syn12010132'
-crf.stair.tbl <- CovariateAnalysis::downloadFile(crf.stair.tableId) %>% dplyr::select(-V1)
-all.used.ids <- c(all.used.ids, crf.stair.tableId)
-
-# Fitbit table containing fitbit HR estimates (for reference, not actually needed)
-fitbit.stair.tableId = 'syn12550818'
-fitbit.stair.tbl <- CovariateAnalysis::downloadFile(fitbit.stair.tableId) %>% dplyr::select(-V1)
-all.used.ids <- c(all.used.ids, fitbit.stair.tableId)
 
 # Stair step test start and stop times
 stair.times.tableId = 'syn12673572'
@@ -67,7 +57,9 @@ vo2.tbl <- merged.stair.tbl %>%
   dplyr::select(recordId, healthCode, externalId, createdOn,
                 createdOnTimeZone, samplingRate, redHR, redConf,
                 greenHR, greenConf, blueHR, blueConf, Assay,
-                window, startTime, stopTime, fitbit.timestamp, fitbit.hr) %>% 
+                window, startTime, stopTime,
+                fitbit.timestamp, fitbit.hr,
+                polar.timestamp, polar.hr) %>% 
   dplyr::left_join(stair.times.tbl) %>% 
   dplyr::inner_join(pmi.metadata %>%
                       dplyr::select('externalId','Sex','Age','Field Day Wt (kg)')) %>% 
@@ -287,15 +279,56 @@ estimateVo2 <- function(pdat){
                              conf60 = NA) %>% 
       dplyr::mutate(metric = 'fitbit')
   }
+
+  # Polar heartrate data
+  pdat.polar <- pdat %>%
+    dplyr::select(polar.hr, polar.timestamp) %>% 
+    na.omit()
   
+  getPolarHeartRate <- function(dat.polar, hr.timestamp){
+    dat.polar <- dat.polar %>% 
+      dplyr::mutate(hr.distance.polar = abs(hr.timestamp - polar.timestamp))
+    hr.distance.opt.polar <- min(dat.polar$hr.distance.polar)
+    dat.polar <- dat.polar %>% dplyr::filter(hr.distance.polar == hr.distance.opt.polar)
+    polarHRt <- tryCatch({mean(dat.polar$polar.hr %>% as.numeric())}
+                          ,error = function(e){return(NA)})
+    return(polarHRt)  
+  }
+  
+  if(nrow(pdat.polar) != 0){
+    pdat.polar <- pdat.polar %>%
+      dplyr::mutate_at(.vars = c('polar.timestamp'),
+                       .funs = as.POSIXct)
+    
+    polar.dat <- data.frame(hr15 = getPolarHeartRate(pdat.polar, hr15.timestamp),
+                             hr30 = getPolarHeartRate(pdat.polar, hr30.timestamp),
+                             hr60 = getPolarHeartRate(pdat.polar, hr60.timestamp),
+                             conf15 = NA,
+                             conf30 = NA,
+                             conf60 = NA) %>% 
+      dplyr::mutate(metric = 'polar')
+  }else{
+    polar.dat <- data.frame(hr15 = NA,
+                             hr30 = NA,
+                             hr60 = NA,
+                             conf15 = NA,
+                             conf30 = NA,
+                             conf60 = NA) %>% 
+      dplyr::mutate(metric = 'polar')
+  }
+  
+    
   hr.crf.dat <- hr.crf.dat %>% 
     dplyr::mutate_at(.vars = c('hr15','conf15','hr30','conf30','hr60','conf60'),
                      .funs = as.numeric)
   fitbit.dat <- fitbit.dat %>% 
     dplyr::mutate_at(.vars = c('hr15','conf15','hr30','conf30','hr60','conf60'),
                      .funs = as.numeric)
+  polar.dat <- polar.dat %>% 
+    dplyr::mutate_at(.vars = c('hr15','conf15','hr30','conf30','hr60','conf60'),
+                     .funs = as.numeric)
   
-  dat <- rbind(hr.crf.dat,fitbit.dat) %>% 
+  dat <- rbind(hr.crf.dat, fitbit.dat, polar.dat) %>% 
     dplyr::mutate(hb15to30 = 0.25*0.5*(hr15+hr30)) %>% 
     dplyr::mutate(hb30to60 = 0.5*0.5*(hr30+hr60))
 

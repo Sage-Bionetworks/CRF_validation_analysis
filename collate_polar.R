@@ -30,9 +30,14 @@ for(file.i in all.files){
                   'start.time' = 'Start.time',
                   'duration' = 'Duration') %>% 
     dplyr::mutate(externalId = substring(file.i,4,6)) 
-  polar_data <- rbind(polar_data, cbind(a1,a2))
+  polar_data <- rbind(polar_data, cbind(a1,a2)) %>% 
+    dplyr::mutate(createdOnTimeZone = -800)
 }
 
+polar_data$start.timestamp <- apply(polar_data[,c('date','start.time')],1,paste,collapse ='')
+polar_data$start.timestamp <- strptime(polar_data$start.timestamp, format = '%d-%m-%Y %H:%M:%S')
+polar_data$timestamp <- polar_data$start.timestamp + (as.numeric(polar_data$time)-1)
+polar_data$timestamp <- polar_data$timestamp - 60*60*as.numeric(polar_data$createdOnTimeZone)/100
 
 # Upload to Synapse
 synapser::synLogin()

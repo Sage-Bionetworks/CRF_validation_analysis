@@ -38,6 +38,7 @@ polar_data$start.timestamp <- apply(polar_data[,c('date','start.time')],1,paste,
 polar_data$start.timestamp <- strptime(polar_data$start.timestamp, format = '%d-%m-%Y %H:%M:%S')
 polar_data$timestamp <- polar_data$start.timestamp + (as.numeric(polar_data$time)-1)
 polar_data$timestamp <- polar_data$timestamp - 60*60*as.numeric(polar_data$createdOnTimeZone)/100
+polar_data$start.timestamp <- polar_data$start.timestamp - 60*60*as.numeric(polar_data$createdOnTimeZone)/100
 
 # Upload to Synapse
 synapser::synLogin()

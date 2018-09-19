@@ -32,13 +32,13 @@ synapseLogin()
 # fitbit.tableId = 'syn12550816'
 # name = 'Cardio 12MT-v5'
 
-crf.tableId = 'syn12010132'
-fitbit.tableId = 'syn12550818'
-name = 'Cardio Stair Step-v1'
+# crf.tableId = 'syn12010132'
+# fitbit.tableId = 'syn12550818'
+# name = 'Cardio Stair Step-v1'
  
-# crf.tableId = 'syn12010237'
-# fitbit.tableId = 'syn12550817'
-# name = 'Cardio Stress Test-v1'
+crf.tableId = 'syn12010237'
+fitbit.tableId = 'syn12550817'
+name = 'Cardio Stress Test-v1'
 
 crf.tbl <- CovariateAnalysis::downloadFile(crf.tableId) %>% dplyr::select(-V1)
 fitbit.tbl <- CovariateAnalysis::downloadFile(fitbit.tableId) %>% dplyr::select(-V1)
@@ -54,8 +54,8 @@ merged.tbl <- apply(crf.tbl,1,function(x){
     fitbit.data <- fitbit.tbl %>% dplyr::filter(healthCode == x['healthCode']) %>% 
     dplyr::filter(timestamp <= x['stopTime']) %>%  dplyr::filter(timestamp >= x['startTime'])
     
-    x['fitbit.timestamp'] <- fitbit.data$timestamp[1]
-    x['fitbit.hr'] <- fitbit.data$fitbitHR[1]
+    x['fitbit.timestamp'] <- median(fitbit.data$timestamp)
+    x['fitbit.hr'] <- median(fitbit.data$fitbitHR)
     return(x)
   },
            error = function(e){ NA })

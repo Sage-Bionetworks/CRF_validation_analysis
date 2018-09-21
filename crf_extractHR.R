@@ -55,8 +55,13 @@ getStartAndStopTime <- function(hrJsonFileLoc){
   # Column containing time (with respect to the reference point) is timestamp
   
   dat <- jsonlite::fromJSON(as.character(hrJsonFileLoc))
-  startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') -  60*60*getTimeZone(dat$timestampDate[1])
-  stopTime <- startTime + dat$timestamp[length(dat$timestamp)]
+  if('timestampDate' %in% names(dat)){
+    startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') -  60*60*getTimeZone(dat$timestampDate[1])
+    stopTime <- startTime + dat$timestamp[length(dat$timestamp)]
+  }else{
+    startTime <- as.POSIXct(dat$timestamp[1], origin = '1970-01-01')
+    stopTime <- as.POSIXct(dat$timestamp[length(dat$timestamp)], origin = '1970-01-01')
+  }
   
   return(list(startTime = startTime, stopTime = stopTime))
 }
@@ -64,14 +69,14 @@ getStartAndStopTime <- function(hrJsonFileLoc){
 #############
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #############
-# tableId = 'syn11665074'
-# name = 'Cardio 12MT-v5'
+tableId = 'syn11665074'
+name = 'Cardio 12MT-v5'
  
 # tableId = 'syn11580624'
 # name = 'Cardio Stress Test-v1'
 
-tableId = 'syn11432994'
-name = 'Cardio Stair Step-v1'
+# tableId = 'syn11432994'
+# name = 'Cardio Stair Step-v1'
 
 all.used.ids = tableId
 columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json') # For Cardio 12MT

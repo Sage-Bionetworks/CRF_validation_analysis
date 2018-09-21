@@ -50,11 +50,19 @@ getTimeZone = function(time)
 }
 }
 
-getStartAndStopTime <- function(hrJsonFileLoc){
+getStartAndStopTime <- function(x, assay){
   # Column containing reference timepoint is timestampDate
   # Column containing time (with respect to the reference point) is timestamp
   
+  if(assay == 'before'){
+    hrJsonFileLoc <- as.character(x['heartRate_before_recorder.fileLocation'][[1]])
+  }else{
+    hrJsonFileLoc <- as.character(x['heartRate_after_recorder.fileLocation'][[1]])
+  }
+  
+  tag <- 'recorder'
   dat <- jsonlite::fromJSON(as.character(hrJsonFileLoc))
+  
   if('timestampDate' %in% names(dat)){
     startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') -  60*60*getTimeZone(dat$timestampDate[1])
     stopTime <- startTime + dat$timestamp[length(dat$timestamp)]
@@ -63,26 +71,45 @@ getStartAndStopTime <- function(hrJsonFileLoc){
     stopTime <- as.POSIXct(dat$timestamp[length(dat$timestamp)], origin = '1970-01-01')
   }
   
-  return(list(startTime = startTime, stopTime = stopTime))
+  if(stopTime < '2015-01-01'){
+    tag <- 'motion'
+    if(assay == 'before'){
+      hrJsonFileLoc <- as.character(x['heartRate_before_motion.fileLocation'][[1]])
+    }else{
+      hrJsonFileLoc <- as.character(x['heartRate_after_motion.fileLocation'][[1]])
+    }
+    dat <- jsonlite::fromJSON(as.character(hrJsonFileLoc))
+    if('timestampDate' %in% names(dat)){
+      startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') -  60*60*getTimeZone(dat$timestampDate[1])
+      stopTime <- startTime + dat$timestamp[length(dat$timestamp)]
+    }else{
+      startTime <- as.POSIXct(dat$timestamp[1], origin = '1970-01-01')
+      stopTime <- as.POSIXct(dat$timestamp[length(dat$timestamp)], origin = '1970-01-01')
+    }
+  }
+  
+  return(list(startTime = startTime, stopTime = stopTime, tag = tag))
 }
 
 #############
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #############
-tableId = 'syn11665074'
-name = 'Cardio 12MT-v5'
- 
+# tableId = 'syn11665074'
+# name = 'Cardio 12MT-v5'
+
 # tableId = 'syn11580624'
 # name = 'Cardio Stress Test-v1'
 
-# tableId = 'syn11432994'
-# name = 'Cardio Stair Step-v1'
+tableId = 'syn11432994'
+name = 'Cardio Stair Step-v1'
 
 all.used.ids = tableId
-columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json') # For Cardio 12MT
+columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json',
+                      'heartRate_before_motion.json','heartRate_after_motion.json') # For Cardio 12MT
 columnsToSelect = c('recordId', 'healthCode','externalId','dataGroups','appVersion','createdOn',
                     'createdOnTimeZone','phoneInfo','metadata.startDate','metadata.endDate',
-                    'heartRate_before_recorder.json','heartRate_after_recorder.json') # For Cardio 12MT
+                    'heartRate_before_recorder.json','heartRate_after_recorder.json',
+                    'heartRate_before_motion.json','heartRate_after_motion.json') # For Cardio 12MT
 hr.tbl = synTableQuery(paste('select * from', tableId))
 hr.tbl@values = hr.tbl@values %>% dplyr::select(columnsToSelect)  
 
@@ -94,9 +121,20 @@ hr.json.loc = lapply(columnsToDownload, function(col.name){
 })
 
 hr.table.meta = data.table::rbindlist(list(hr.tbl@values %>%
-                                            left_join(do.call(cbind, hr.json.loc))),
+                                            left_join(do.call(cbind, hr.json.loc[1]))),
                                      use.names = T, fill = T)%>%as.data.frame
+ 
+hr.table.meta = data.table::rbindlist(list(hr.table.meta %>%
+                                             left_join(do.call(cbind, hr.json.loc[2]))),
+                                      use.names = T, fill = T) %>% as.data.frame()
 
+hr.table.meta = data.table::rbindlist(list(hr.table.meta %>%
+                                             left_join(do.call(cbind, hr.json.loc[3]))),
+                                      use.names = T, fill = T) %>% as.data.frame()
+
+hr.table.meta = data.table::rbindlist(list(hr.table.meta %>%
+                                             left_join(do.call(cbind, hr.json.loc[4]))),
+                                      use.names = T, fill = T) %>% as.data.frame()
 
 # Subset to PMI Ids
 hr.table.meta <- hr.table.meta[grep('PMI', hr.table.meta$externalId),]
@@ -108,15 +146,15 @@ hr.table.meta$originalTable = rep(tableId, nrow(hr.table.meta))
 #############
 
 hr.before.times <- apply(hr.table.meta,1,function(x){ 
-  tryCatch({getStartAndStopTime(as.character(x['heartRate_before_recorder.fileLocation']))},
+  tryCatch({getStartAndStopTime(x,'before')},
            error = function(e){ NA })
-}) %>% plyr::ldply(data.frame) %>% dplyr::rename('recordId' = '.id') %>% dplyr::select(recordId, startTime, stopTime) %>% 
+}) %>% plyr::ldply(data.frame) %>% dplyr::rename('recordId' = '.id') %>% dplyr::select(recordId, startTime, stopTime, tag) %>% 
   dplyr::mutate(Assay = 'before')
 
 hr.after.times <- apply(hr.table.meta,1,function(x){ 
-  tryCatch({getStartAndStopTime(as.character(x['heartRate_after_recorder.fileLocation']))},
+  tryCatch({getStartAndStopTime(x, 'after')},
            error = function(e){ NA })
-}) %>% plyr::ldply(data.frame) %>% dplyr::rename('recordId' = '.id') %>% dplyr::select(recordId, startTime, stopTime) %>% 
+}) %>% plyr::ldply(data.frame) %>% dplyr::rename('recordId' = '.id') %>% dplyr::select(recordId, startTime, stopTime, tag) %>% 
   dplyr::mutate(Assay = 'after')
 
 hr.times <- rbind(hr.before.times, hr.after.times)
@@ -171,7 +209,14 @@ hr.after.table = lapply(hr.after, function(ele){
 ############
 # !!!! FIND RED FLAGS: RECORDS WITH FAILED HR EXTRACTIONS
 ############
-hr.table.meta <- hr.table.meta %>% dplyr::select(-heartRate_before_recorder.fileLocation,-heartRate_after_recorder.fileLocation, -heartRate_before_recorder.json, -heartRate_after_recorder.json)
+hr.table.meta <- hr.table.meta %>% dplyr::select(-heartRate_before_recorder.fileLocation,
+                                                 -heartRate_after_recorder.fileLocation,
+                                                 -heartRate_before_recorder.json,
+                                                 -heartRate_after_recorder.json,
+                                                 -heartRate_before_motion.fileLocation,
+                                                 -heartRate_after_motion.fileLocation,
+                                                 -heartRate_before_motion.json,
+                                                 -heartRate_after_motion.json)
 # Single out the records for which the extraction has produced any error.
 a.before <- vector()
 for (i in 1:length(hr.before)){

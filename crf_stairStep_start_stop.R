@@ -71,10 +71,13 @@ getStairStartAndStopTime <- function(stairJsonFileLoc){
   #                   error = function(e){ NA })
   # }
   # dat <- jsonlite::fromJSON(as.character(stairJsonFileLoc)) %>% dplyr::filter(stepPath == 'Cardio Stair Step/stairStep/motion')
-  
-  startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') -  60*60*getTimeZone(dat$timestampDate[1])
-  stopTime <- startTime + dat$timestamp[length(dat$timestamp)]-dat$timestamp[1]
-  
+  if('timestampDate' %in% names(dat)){
+    startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') -  60*60*getTimeZone(dat$timestampDate[1])
+    stopTime <- startTime + dat$timestamp[length(dat$timestamp)]
+  }else{
+    startTime <- as.POSIXct(dat$timestamp[1], origin = '1970-01-01')
+    stopTime <- as.POSIXct(dat$timestamp[length(dat$timestamp)], origin = '1970-01-01')
+  }
   return(list(stairStartTime = startTime, stairStopTime = stopTime))
 }
 

@@ -28,20 +28,20 @@ synapseLogin()
 
 ## Download both tables crf and fitbit
 
-crf.tableId = 'syn12010238'
-fitbit.tableId = 'syn12550816'
-polar.tableId = 'syn16811362'
-name = 'Cardio 12MT-v5'
+# crf.tableId = 'syn12010238'
+# fitbit.tableId = 'syn12550816'
+# polar.tableId = 'syn16811362'
+# name = 'Cardio 12MT-v5'
 
 # crf.tableId = 'syn12010132'
 # fitbit.tableId = 'syn12550818'
 # polar.tableId = 'syn16811501'
 # name = 'Cardio Stair Step-v1'
   
-# crf.tableId = 'syn12010237'
-# fitbit.tableId = 'syn12550817'
-# polar.tableId = 'syn16811363'
-# name = 'Cardio Stress Test-v1'
+crf.tableId = 'syn12010237'
+fitbit.tableId = 'syn12550817'
+polar.tableId = 'syn16811363'
+name = 'Cardio Stress Test-v1'
 
 crf.tbl <- CovariateAnalysis::downloadFile(crf.tableId) %>% dplyr::select(-V1)
 fitbit.tbl <- CovariateAnalysis::downloadFile(fitbit.tableId) %>% dplyr::select(-V1)
@@ -104,7 +104,7 @@ nUsers$common <- fitbit.tbl %>% dplyr::select(healthCode) %>% unique() %>%
 # User start and stop times for each CRF, polar and fitbit records across all healthCodes/externalIds
 crf.user.times <- crf.tbl %>%
   dplyr::select(recordId, healthCode, appVersion, phoneInfo,
-                externalId, startTime, stopTime) %>% 
+                externalId, startTime, stopTime,tag) %>% 
   dplyr::group_by(recordId) %>% 
   dplyr::mutate(startTime.rec = min(startTime)) %>% 
   dplyr::mutate(stopTime.rec = max(stopTime)) %>% 

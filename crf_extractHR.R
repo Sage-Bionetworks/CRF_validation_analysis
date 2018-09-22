@@ -29,25 +29,28 @@ synapseLogin()
 # Required functions
 #############
 
-getTimeZone = function(time)
-{
+getTimeZone = function(time, tag){
   last = substring(time, nchar(time), nchar(time));
-  if(last == 'Z')
-  {
+  if(last == 'Z'){
     return(0);
-  }
-  else
-  {
-    mins = as.numeric(substring(time, nchar(time)-1, nchar(time)));
-    hours = as.numeric(substring(time, nchar(time)-4, nchar(time)-3));
-    signt = substring(nchar(time)-5,nchar(time)-5)
+  }else{
+    
+    if(tag == 'recorder'){
+      mins = as.numeric(substring(time, nchar(time)-1, nchar(time)));
+      hours = as.numeric(substring(time, nchar(time)-4, nchar(time)-3));
+      signt = substring(nchar(time)-5,nchar(time)-5)
+    }else{
+      mins = as.numeric(substring(time, nchar(time)-1, nchar(time)));
+      hours = as.numeric(substring(time, nchar(time)-3, nchar(time)-2));
+      signt = substring(nchar(time)-4,nchar(time)-4)
+    }
     
     if(signt == '-'){
     return(timezone = hours + mins/60);
     }else{
     return(timezone = -(hours + mins/60));
-  }
-}
+    }
+    }
 }
 
 getStartAndStopTime <- function(x, assay){
@@ -64,7 +67,7 @@ getStartAndStopTime <- function(x, assay){
   dat <- jsonlite::fromJSON(as.character(hrJsonFileLoc))
   
   if('timestampDate' %in% names(dat)){
-    startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') -  60*60*getTimeZone(dat$timestampDate[1])
+    startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') -  60*60*getTimeZone(dat$timestampDate[1],tag = 'recorder')
     stopTime <- startTime + dat$timestamp[length(dat$timestamp)]
   }else{
     startTime <- as.POSIXct(dat$timestamp[1], origin = '1970-01-01')
@@ -79,8 +82,10 @@ getStartAndStopTime <- function(x, assay){
       hrJsonFileLoc <- as.character(x['heartRate_after_motion.fileLocation'][[1]])
     }
     dat <- jsonlite::fromJSON(as.character(hrJsonFileLoc))
+    
+    # To cater to missing android data
     if('timestampDate' %in% names(dat)){
-      startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') -  60*60*getTimeZone(dat$timestampDate[1])
+      startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') - 60*60*getTimeZone(dat$timestampDate[1], tag = 'motion')
       stopTime <- startTime + dat$timestamp[length(dat$timestamp)]
     }else{
       startTime <- as.POSIXct(dat$timestamp[1], origin = '1970-01-01')
@@ -94,14 +99,14 @@ getStartAndStopTime <- function(x, assay){
 #############
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #############
-# tableId = 'syn11665074'
-# name = 'Cardio 12MT-v5'
+tableId = 'syn11665074'
+name = 'Cardio 12MT-v5'
 
 # tableId = 'syn11580624'
 # name = 'Cardio Stress Test-v1'
 
-tableId = 'syn11432994'
-name = 'Cardio Stair Step-v1'
+# tableId = 'syn11432994'
+# name = 'Cardio Stair Step-v1'
 
 all.used.ids = tableId
 columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json',
@@ -311,7 +316,7 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse
 write.csv(hr.results,file = paste0('hr_results',name,'.csv'),na="")
-obj = File(paste0('hr_results',name,'.csv'), 
-           name = paste0('hr_results',name,'.csv'), 
+obj = File(paste0('hr_results',name,'.csv'),
+           name = paste0('hr_results',name,'.csv'),
            parentId = 'syn11968320')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)

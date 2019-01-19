@@ -74,7 +74,8 @@ getStartAndStopTime <- function(dat, tag_ = 'iPhone'){
   
   if('timestampDate' %in% names(dat)){
     startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') - 
-      60*60*getTimeZone(dat$timestampDate[1],tag = tag_)
+      # 60*60*getTimeZone(dat$timestampDate[1],tag = tag_)
+      0
     stopTime <- startTime + (dat$timestamp[length(dat$timestamp)]-min(dat$timestamp, na.rm = T))
   }else{
     startTime <- as.POSIXct(dat$timestamp[1], origin = '1970-01-01')
@@ -153,7 +154,7 @@ deMystifyPhone <- function(phone_string){
     phone <- 'Huawei Mate SE'
   }
   if(grepl('Motorola', phone_string)){
-    phone <- 'Motorola G6 Play'
+    phone <- 'Moto G6 Play'
   }
   if(grepl('LGE', phone_string)){
     phone <- 'LG Stylo 4'
@@ -234,8 +235,8 @@ createdon.tbl <- hr.table.meta %>%
                 `Participant ID` = answers.participantID) %>% 
   unique()
 createdon.tbl$`Participant ID` <- as.numeric(createdon.tbl$`Participant ID`)
-crf.validation.table.meta <- createdon.tbl %>% 
-  dplyr::left_join(crf.validation.table.meta)
+crf.validation.table.meta <- crf.validation.table.meta %>% 
+  dplyr::left_join(createdon.tbl)
 
 #######################################
 # Extract Heart rate data from Nonin and Phone JSON files
@@ -255,7 +256,8 @@ nonin.hr.tbl <- apply(crf.validation.table.meta,1,function(x){
       dat.iPhoneSE <- tryCatch({noninRead(as.character(x['iPhone SE fileLocation File'])) %>% 
           dplyr::mutate(phone = 'iPhone SE')},
           error = function(e){noninReadError(phone_ = 'iPhone SE')})
-      dat.iPhone8Plus <- tryCatch({noninRead(as.character(x['iPhone 8+ fileLocation File'])) %>% 
+      dat.iPhone8Plus <- tryCatch({noninRead(as.character(x['iPhone 8+ fileLocation file'])) %>% 
+          # note it is file, not File in the column name, this was an error from the start
           dplyr::mutate(phone = 'iPhone 8+')},
           error = function(e){noninReadError(phone_ = 'iPhone 8+')})
       dat.iPhoneXs <- tryCatch({noninRead(as.character(x['iPhone XS fileLocation File'])) %>% 
@@ -283,8 +285,8 @@ nonin.hr.tbl <- apply(crf.validation.table.meta,1,function(x){
         unique() %>% 
         dplyr::mutate(participantID = x['Participant ID'],
                       createdDate = as.character(x['createdOnDate']),
-                      createdOnTimeZone = x['createdOnTimeZone']
-                      # createdOnTimeZone = '-600'
+                      # createdOnTimeZone = x['createdOnTimeZone']
+                      createdOnTimeZone = '0'
                       ) %>% 
         dplyr::select(TIMESTAMP, HR.D, phone, participantID,
                       createdDate, createdOnTimeZone) %>% 

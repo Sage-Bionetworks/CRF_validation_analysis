@@ -119,7 +119,9 @@ getHRdataframe <- function(hr.json.fileLocation, window_length_ = 10,
   temp$blueConf <- tryCatch({unlist(ele$blue$confidence)}, error = function(e){ NA })
   temp$method <- tryCatch({method_}, error = function(e){ NA })
   temp$samplingRate <- tryCatch({mhealthtools:::get_sampling_rate(hr.data)}, error = function(e){ NA })
-  temp$startTime <- tryCatch({hr.times$startTime}, error = function(e){ NA })
+  temp$startTime <- tryCatch({hr.times$startTime + hr.data$timestamp[180]}, # The offset in time is because
+                             # of how mhealthtools works, we throw away the first 180 samples after filtering
+                             error = function(e){ NA })
   temp$stopTime <- tryCatch({hr.times$stopTime}, error = function(e){ NA })
   
   nwindow <- max(length(temp$redHR), length(temp$greenHR), length(temp$blueHR))

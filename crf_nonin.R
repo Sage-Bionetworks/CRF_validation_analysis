@@ -4,11 +4,12 @@
 # Author: Meghasyam Tummalacherla
 # email: meghasyam@sagebase.org
 ########################################################################
-
 rm(list=ls())
 gc()
 devtools::install_github("Sage-Bionetworks/mhealthtools")
 source('noninRead.R')
+options(digits.secs = 6)
+# to get the millisecond resolution
 
 ##############
 # Required libraries
@@ -24,7 +25,6 @@ library(githubr)
 library(ggplot2)
 library(parsedate)
 library(lubridate)
-
 synapseLogin()
 
 ##############
@@ -73,7 +73,7 @@ getStartAndStopTime <- function(dat, tag_ = 'iPhone'){
   # Column containing time (with respect to the reference point) is timestamp
   
   if('timestampDate' %in% names(dat)){
-    startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%S') - 
+    startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%OS') - 
       # 60*60*getTimeZone(dat$timestampDate[1],tag = tag_)
       0
     stopTime <- startTime + (dat$timestamp[length(dat$timestamp)]-min(dat$timestamp, na.rm = T))
@@ -251,7 +251,6 @@ crf.validation.table.meta <- crf.validation.table.meta %>%
 # there is no way we can get confused because they will be using only one phone
 # at any given instant. So if we have Nonin data indexed by timestamp and participantID
 # it should suffice.
-
 nonin.hr.tbl <- apply(crf.validation.table.meta,1,function(x){ 
   tryCatch(
     {
@@ -296,7 +295,7 @@ nonin.hr.tbl <- apply(crf.validation.table.meta,1,function(x){
       
       # Merge createdDate and time to create a timestamp and convert that into POSIXlt format
       dat.Nonin$timestamp <- apply(dat.Nonin[,c('createdDate','TIMESTAMP')],1,paste, collapse=' ')
-      dat.Nonin$timestamp <- strptime(dat.Nonin$timestamp, format = '%Y-%m-%d %H:%M:%S')
+      dat.Nonin$timestamp <- strptime(dat.Nonin$timestamp, format = '%Y-%m-%d %H:%M:%OS')
       dat.Nonin$timestamp <- dat.Nonin$timestamp - 60*60*as.numeric(dat.Nonin$createdOnTimeZone)/100
       
       dat.Nonin <- dat.Nonin %>% 
@@ -385,10 +384,9 @@ merged.tbl <- merged.tbl %>%
   data.table::transpose() %>%
   `colnames<-`(colN)
 merged.tbl$noninTimestamp <- as.POSIXct(as.numeric(merged.tbl$noninTimestamp), origin = '1970-01-01')
-merged.tbl$startTime <- strptime(merged.tbl$startTime, format = '%Y-%m-%d %H:%M:%S',tz='') %>% as.POSIXct()
-merged.tbl$stopTime <- strptime(merged.tbl$stopTime, format = '%Y-%m-%d %H:%M:%S',tz='') %>% as.POSIXct()
-
-
+merged.tbl$startTime <- strptime(merged.tbl$startTime, format = '%Y-%m-%d %H:%M:%OS',tz='') %>% as.POSIXct()
+merged.tbl$stopTime <- strptime(merged.tbl$stopTime, format = '%Y-%m-%d %H:%M:%OS',tz='') %>% as.POSIXct()
+options(digits.secs = 3) # reset the seconds digit resolution
 #######################################
 # Upload Data to Synapse 
 #######################################

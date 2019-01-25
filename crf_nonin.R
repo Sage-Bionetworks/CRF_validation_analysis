@@ -167,6 +167,25 @@ deMystifyPhone <- function(phone_string){
   return(phone)
 }
 
+deMystifyITA <- function(ITA){
+  ITA <- as.numeric(ITA)
+  de.ita <- NA
+  if(ITA > 55){
+    de.ita <- 1
+  }else if(ITA > 41){
+    de.ita <- 2
+  }else if(ITA > 28){
+    de.ita <- 3
+  }else if(ITA > 10){
+    de.ita <- 4
+  }else if(ITA > -30){
+    de.ita <- 5
+  }else if(ITA < -30){
+    de.ita <- 6
+  }
+  return(de.ita)
+}
+
 #######################################
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #######################################
@@ -396,10 +415,14 @@ est.fitz.tbl <- crf.validation.table.meta %>%
                 `Natural Hair Color`, `Natural Skin Color`,
                 `Celeb Choice - Please select the number that best matches you based on your skin.`) %>% 
   unique() %>% 
-  dplyr::mutate(face.fitzpatrick = atan(`Face L*` - 50)/`Face b*`*180/pi) %>% 
-  dplyr::mutate(finger.fitzpatrick = atan(`Finger L*` - 50)/`Finger b*`*180/pi) %>% 
+  dplyr::mutate(face.fitzpatrick = atan((`Face L*` - 50)/`Face b*`)*180/pi) %>% 
+  dplyr::mutate(finger.fitzpatrick = atan((`Finger L*` - 50)/`Finger b*`)*180/pi) %>%
   unique()
 
+est.fitz.tbl$face.fitzpatrick <- lapply(est.fitz.tbl$face.fitzpatrick, deMystifyITA) %>% 
+  unlist()
+est.fitz.tbl$finger.fitzpatrick <- lapply(est.fitz.tbl$finger.fitzpatrick, deMystifyITA) %>% 
+  unlist()
 #######################################
 # Upload Data to Synapse 
 #######################################

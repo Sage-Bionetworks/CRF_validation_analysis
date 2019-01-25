@@ -392,7 +392,9 @@ options(digits.secs = 3) # reset the seconds digit resolution
 #######################################
 est.fitz.tbl <- crf.validation.table.meta %>% 
   dplyr::select(`Participant ID`, `Face L*`, `Face b*`,
-                `Finger L*`, `Finger b*`) %>% 
+                `Finger L*`, `Finger b*`, `Eye Color`,
+                `Natural Hair Color`, `Natural Skin Color`,
+                `Celeb Choice - Please select the number that best matches you based on your skin.`) %>% 
   unique() %>% 
   dplyr::mutate(face.fitzpatrick = atan(`Face L*` - 50)/`Face b*`*180/pi) %>% 
   dplyr::mutate(finger.fitzpatrick = atan(`Finger L*` - 50)/`Finger b*`*180/pi) %>% 

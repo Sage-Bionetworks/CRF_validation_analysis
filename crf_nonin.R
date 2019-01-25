@@ -388,6 +388,17 @@ merged.tbl$startTime <- strptime(merged.tbl$startTime, format = '%Y-%m-%d %H:%M:
 merged.tbl$stopTime <- strptime(merged.tbl$stopTime, format = '%Y-%m-%d %H:%M:%OS',tz='') %>% as.POSIXct()
 options(digits.secs = 3) # reset the seconds digit resolution
 #######################################
+# Calculate a table of estimated Fitzpatrick scales from Spectrocolorimeter values 
+#######################################
+est.fitz.tbl <- crf.validation.table.meta %>% 
+  dplyr::select(`Participant ID`, `Face L*`, `Face b*`,
+                `Finger L*`, `Finger b*`) %>% 
+  unique() %>% 
+  dplyr::mutate(face.fitzpatrick = atan(`Face L*` - 50)/`Face b*`*180/pi) %>% 
+  dplyr::mutate(finger.fitzpatrick = atan(`Finger L*` - 50)/`Finger b*`*180/pi) %>% 
+  unique()
+
+#######################################
 # Upload Data to Synapse 
 #######################################
 # Github link
@@ -417,3 +428,11 @@ obj = File(paste0('merged_crf_nonin','.csv'),
            name = paste0('merged_crf_nonin','.csv'), 
            parentId = 'syn12435196')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)
+
+# Write Estimated FitzPatrick scales to Synapse
+write.csv(est.fitz.tbl,file = paste0('est_fitzpatrick','.csv'),na="")
+obj = File(paste0('est_fitzpatrick','.csv'), 
+           name = paste0('est_fitzpatrick','.csv'), 
+           parentId = 'syn12435196')
+obj = synStore(obj,  used = all.used.ids, executed = thisFile)
+

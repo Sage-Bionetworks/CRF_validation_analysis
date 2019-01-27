@@ -320,6 +320,10 @@ nonin.hr.tbl <- apply(crf.validation.table.meta,1,function(x){
       dat.Nonin <- dat.Nonin %>% 
         dplyr::select(timestamp, phone, participantID, noninHR)
       
+      dat.Nonin$noninHR[as.numeric(dat.Nonin$noninHR) == 511] <- NA
+      # If the pulseOx has an error estimating the HR, it will show 511BPM
+      # as the default error HR
+      
       return(dat.Nonin)
     },
     error = function(e){ NA }

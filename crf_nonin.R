@@ -425,13 +425,13 @@ est.fitz.tbl <- crf.validation.table.meta %>%
                 `Natural Hair Color`, `Natural Skin Color`,
                 `Celeb Choice - Please select the number that best matches you based on your skin.`) %>% 
   unique() %>% 
-  dplyr::mutate(face.fitzpatrick = atan((`Face L*` - 50)/`Face b*`)*180/pi) %>% 
-  dplyr::mutate(finger.fitzpatrick = atan((`Finger L*` - 50)/`Finger b*`)*180/pi) %>%
+  dplyr::mutate(face.fitzpatrick.ita = atan((`Face L*` - 50)/`Face b*`)*180/pi) %>% 
+  dplyr::mutate(finger.fitzpatrick.ita = atan((`Finger L*` - 50)/`Finger b*`)*180/pi) %>%
   unique()
 
-est.fitz.tbl$face.fitzpatrick <- lapply(est.fitz.tbl$face.fitzpatrick, deMystifyITA) %>% 
+est.fitz.tbl$face.fitzpatrick <- lapply(est.fitz.tbl$face.fitzpatrick.ita, deMystifyITA) %>% 
   unlist()
-est.fitz.tbl$finger.fitzpatrick <- lapply(est.fitz.tbl$finger.fitzpatrick, deMystifyITA) %>% 
+est.fitz.tbl$finger.fitzpatrick <- lapply(est.fitz.tbl$finger.fitzpatrick.ita, deMystifyITA) %>% 
   unlist()
 #######################################
 # Upload Data to Synapse 

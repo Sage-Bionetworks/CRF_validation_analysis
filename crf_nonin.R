@@ -170,19 +170,25 @@ deMystifyPhone <- function(phone_string){
 deMystifyITA <- function(ITA){
   ITA <- as.numeric(ITA)
   de.ita <- NA
-  if(ITA > 55){
-    de.ita <- 1
-  }else if(ITA > 41){
-    de.ita <- 2
-  }else if(ITA > 28){
-    de.ita <- 3
-  }else if(ITA > 10){
-    de.ita <- 4
-  }else if(ITA > -30){
-    de.ita <- 5
-  }else if(ITA < -30){
-    de.ita <- 6
-  }
+  tryCatch({
+    if(ITA > 55){
+      de.ita <- 1
+    }else if(ITA > 41){
+      de.ita <- 2
+    }else if(ITA > 28){
+      de.ita <- 3
+    }else if(ITA > 10){
+      de.ita <- 4
+    }else if(ITA > -30){
+      de.ita <- 5
+    }else if(ITA < -30){
+      de.ita <- 6
+    }
+  },
+  error = function(e){
+    print(ITA)
+  })
+  
   return(de.ita)
 }
 
@@ -307,7 +313,7 @@ nonin.hr.tbl <- apply(crf.validation.table.meta,1,function(x){
                       createdDate = as.character(x['createdOnDate']),
                       # createdOnTimeZone = x['createdOnTimeZone']
                       createdOnTimeZone = '0'
-                      ) %>% 
+        ) %>% 
         dplyr::select(TIMESTAMP, HR.D, phone, participantID,
                       createdDate, createdOnTimeZone) %>% 
         dplyr::rename(noninHR = HR.D)
@@ -364,17 +370,17 @@ phone.hr.tbl <- apply(hr.table.meta,1,function(x){
   error = function(e){hr.results <- getHRdataframe(NA) %>% 
     dplyr::mutate(phone = deMystifyPhone(x['phoneInfo'] %>% as.character()),
                   participantID = x['answers.participantID'])
-    hr.results$redHR <- as.numeric(hr.results$redHR)
-    hr.results$greenHR <- as.numeric(hr.results$greenHR)
-    hr.results$blueHR <- as.numeric(hr.results$blueHR)
-    hr.results$redConf <- as.numeric(hr.results$redConf)
-    hr.results$greenConf <- as.numeric(hr.results$greenConf)
-    hr.results$blueConf <- as.numeric(hr.results$blueConf)
-    hr.results$method <- as.character(hr.results$method)
-    hr.results$samplingRate <- as.numeric(hr.results$samplingRate)
-    hr.results$startTime <- as.POSIXct(hr.results$startTime, origin='1970-01-01')
-    hr.results$stopTime <- as.POSIXct(hr.results$stopTime, origin = '1970-01-01')
-    return(hr.results)
+  hr.results$redHR <- as.numeric(hr.results$redHR)
+  hr.results$greenHR <- as.numeric(hr.results$greenHR)
+  hr.results$blueHR <- as.numeric(hr.results$blueHR)
+  hr.results$redConf <- as.numeric(hr.results$redConf)
+  hr.results$greenConf <- as.numeric(hr.results$greenConf)
+  hr.results$blueConf <- as.numeric(hr.results$blueConf)
+  hr.results$method <- as.character(hr.results$method)
+  hr.results$samplingRate <- as.numeric(hr.results$samplingRate)
+  hr.results$startTime <- as.POSIXct(hr.results$startTime, origin='1970-01-01')
+  hr.results$stopTime <- as.POSIXct(hr.results$stopTime, origin = '1970-01-01')
+  return(hr.results)
   })
 }) %>% data.table::rbindlist() %>%
   as.data.frame() %>%
@@ -396,9 +402,9 @@ merged.tbl <- apply(phone.hr.tbl,1,function(x){
     return(x)
   },
   error = function(e){
-  x['noninTimestamp'] <- tryCatch({median(nonin.data$timestamp)},error = function(e){NA})
-  x['noninHR'] <- tryCatch({median(nonin.data$noninHR)},error = function(e){NA})
-  return(x)
+    x['noninTimestamp'] <- tryCatch({median(nonin.data$timestamp)},error = function(e){NA})
+    x['noninHR'] <- tryCatch({median(nonin.data$noninHR)},error = function(e){NA})
+    return(x)
   })
 }) %>% as.data.frame()
 

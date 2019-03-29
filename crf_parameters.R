@@ -7,7 +7,7 @@
 ########################################################################
 rm(list=ls())
 gc()
-
+options(digits.secs = 10)
 ##############
 # Required libraries 
 ##############
@@ -46,6 +46,24 @@ getMeanFilterOrder <- function(sampling_rate){
                     sampling_rate = sampling_rate))
 }
 
+meanCenteringFilter <- function(x, mean_filter_order = 65){
+  y <- 0 * x # Initializing y
+  sequence_limits <- seq((mean_filter_order + 1) / 2,
+                         length(x) - (mean_filter_order - 1) / 2, 1)
+  for (i in sequence_limits) {
+    temp_sequence <- x[seq(i - (mean_filter_order - 1) / 2,
+                           (i + (mean_filter_order - 1) / 2),1)]
+    
+    y[i] <- (((x[i]) -
+                (sum(temp_sequence) - (max(temp_sequence)) + min(temp_sequence)) / (mean_filter_order - 2)) /
+               (max(temp_sequence) - min(temp_sequence) + 0.00001)) 
+    # 0.00001 is a small value, ideally this should be machine epsilon
+  }
+  y <- y[sequence_limits] 
+  # Subset y to only the sequence limits, i.e we only need to caluculate y for the values in sequence_limits
+  return(y)
+}
+
 ##############
 # Calculate the filter parameters for various integer values of sampling rates
 ##############
@@ -70,6 +88,40 @@ highpass_filter_params <- filter_parameters %>%
 # Get Mean filter orders
 mean_centering_filter_params <- lapply(sampling_rates, getMeanFilterOrder) %>% 
   data.table::rbindlist()
+
+# Get sample input-output example for lowpass/highpass filters
+x <- mhealthtools::heartrate_data$red[1100:1400]
+sampling_rate_round <- mhealthtools:::get_sampling_rate(mhealthtools::heartrate_data) %>% 
+  round() # this is 59
+bf_low <- signal::butter(7, 5/(sampling_rate_round/2), type = 'low')
+bf_high <- signal::butter(7, 0.5/(sampling_rate_round/2), type = 'high')
+xf_low <- signal::filter(bf_low,x) %>% as.numeric()
+xf_high <- signal::filter(bf_high,x) %>% as.numeric()
+
+# Get sample input-output example for mean-centering filter
+xf_mcf <- meanCenteringFilter(x, mean_filter_order = 65)
+
+# Get sample input-output example for ACF
+x_acf <- stats::acf(x, lag.max = 80, plot = F)$acf[,1,1]
+
+io_example_list <- list(input = x ,
+                  lowpass = xf_low,
+                  highpass = xf_high,
+                  mcfilter = xf_mcf,
+                  acf = x_acf,
+                  b_lowpass = bf_low$b,
+                  a_lowpass = bf_low$a,
+                  b_highpass = bf_high$b,
+                  a_highpass = bf_high$a,
+                  mean_filter_order = 65,
+                  sampling_rate_round = 59
+)
+
+# Store the input output examples as a JSON
+jsonlite::toJSON(io_example_list, digits = 10) %>% 
+  write_lines('io_examples.json')
+a1 <- jsonlite::fromJSON('io_examples.json')
+all.equal(a1, io_example_list) # Check to see no data loss during json conversion
 
 #######################################
 # Upload Data to Synapse 
@@ -102,3 +154,11 @@ obj = File(paste0('mean_centering_filter_params','.csv'),
            name = paste0('mean_centering_filter_params','.csv'), 
            parentId = 'syn11968320')
 obj = synStore(obj, executed = thisFile)
+
+# Input - output example JSON
+obj = File('io_examples.json',
+           name = 'io_examples.json',
+           parentId = 'syn11968320')
+obj = synStore(obj, executed = thisFile)
+
+

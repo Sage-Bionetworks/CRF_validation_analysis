@@ -12,6 +12,8 @@ options(digits.secs = 10)
 # Required libraries 
 ##############
 library(tidyverse)
+library(synapseClient)
+synapseLogin()
 
 ##############
 # Required functions 

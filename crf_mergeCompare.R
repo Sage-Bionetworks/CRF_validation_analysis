@@ -6,7 +6,6 @@
 ########################################################################
 rm(list=ls())
 gc()
-devtools::install_github('itismeghasyam/mpowertools')
 
 ##############
 # Required libraries
@@ -16,7 +15,7 @@ library(tidyr)
 library(plyr)
 library(dplyr)
 library(seewave)
-library(mpowertools) 
+library(mhealthtools) 
 library(synapseClient)
 library(githubr)
 library(ggplot2)
@@ -29,19 +28,22 @@ synapseLogin()
 ## Download both tables crf and fitbit
 
 # crf.tableId = 'syn12010238'
+# crf.tableId = 'syn17011216'  # for new
 # fitbit.tableId = 'syn12550816'
 # polar.tableId = 'syn16811362'
 # name = 'Cardio 12MT-v5'
 
 # crf.tableId = 'syn12010132'
-# fitbit.tableId = 'syn12550818'
-# polar.tableId = 'syn16811501'
-# name = 'Cardio Stair Step-v1'
+crf.tableId = 'syn18483979' # for new2
+fitbit.tableId = 'syn12550818'
+polar.tableId = 'syn16811501'
+name = 'Cardio Stair Step-v1'
   
-crf.tableId = 'syn12010237'
-fitbit.tableId = 'syn12550817'
-polar.tableId = 'syn16811363'
-name = 'Cardio Stress Test-v1'
+# crf.tableId = 'syn12010237'
+# crf.tableId = 'syn17011217' # for new
+# fitbit.tableId = 'syn12550817'
+# polar.tableId = 'syn16811363'
+# name = 'Cardio Stress Test-v1'
 
 crf.tbl <- CovariateAnalysis::downloadFile(crf.tableId) %>% dplyr::select(-V1)
 fitbit.tbl <- CovariateAnalysis::downloadFile(fitbit.tableId) %>% dplyr::select(-V1)
@@ -146,8 +148,8 @@ thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="b
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse
-write.csv(merged.tbl.2,file = paste0('merged',name,'.csv'),na="")
-obj = File(paste0('merged',name,'.csv'), 
-           name = paste0('merged',name,'.csv'), 
+write.csv(merged.tbl.2,file = paste0('merged_new',name,'.csv'),na="")
+obj = File(paste0('merged_new',name,'.csv'), 
+           name = paste0('merged_new',name,'.csv'), 
            parentId = 'syn11968320')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)

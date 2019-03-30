@@ -6,7 +6,8 @@
 ########################################################################
 rm(list=ls())
 gc()
-devtools::install_github('itismeghasyam/mpowertools')
+devtools::install_github('itismeghasyam/mhealthtools@develop')
+# source('getHrFromJson.R')
 
 ##############
 # Required libraries
@@ -16,14 +17,14 @@ library(tidyr)
 library(plyr)
 library(dplyr)
 library(seewave)
-library(mpowertools) 
-library(synapseClient)
+library(mhealthtools) 
+library(synapser)
 library(githubr)
 library(ggplot2)
 library(parsedate)
 library(lubridate)
 
-synapseLogin()
+synLogin()
 
 #############
 # Required functions
@@ -99,14 +100,14 @@ getStartAndStopTime <- function(x, assay){
 #############
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #############
-tableId = 'syn11665074'
-name = 'Cardio 12MT-v5'
+# tableId = 'syn11665074'
+# name = 'Cardio 12MT-v5'
 
 # tableId = 'syn11580624'
 # name = 'Cardio Stress Test-v1'
 
-# tableId = 'syn11432994'
-# name = 'Cardio Stair Step-v1'
+tableId = 'syn11432994'
+name = 'Cardio Stair Step-v1'
 
 all.used.ids = tableId
 columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json',
@@ -115,17 +116,23 @@ columnsToSelect = c('recordId', 'healthCode','externalId','dataGroups','appVersi
                     'createdOnTimeZone','phoneInfo','metadata.startDate','metadata.endDate',
                     'heartRate_before_recorder.json','heartRate_after_recorder.json',
                     'heartRate_before_motion.json','heartRate_after_motion.json') # For Cardio 12MT
-hr.tbl = synTableQuery(paste('select * from', tableId))
-hr.tbl@values = hr.tbl@values %>% dplyr::select(columnsToSelect)  
+hr.tbl.syn = synTableQuery(paste('select * from', tableId))
+hr.tbl <- hr.tbl.syn$asDataFrame() %>%
+  dplyr::select(columnsToSelect)  
+hr.tbl$heartRate_before_recorder.json <- as.character(hr.tbl$heartRate_before_recorder.json)
+hr.tbl$heartRate_after_recorder.json <- as.character(hr.tbl$heartRate_after_recorder.json)
+hr.tbl$heartRate_before_motion.json <- as.character(hr.tbl$heartRate_before_motion.json)
+hr.tbl$heartRate_after_motion.json <- as.character(hr.tbl$heartRate_after_motion.json)
+
 
 hr.json.loc = lapply(columnsToDownload, function(col.name){
-  tbl.files = synDownloadTableColumns(hr.tbl, col.name) %>%
+  tbl.files = synDownloadTableColumns(hr.tbl.syn, col.name) %>%
     lapply(function(x) data.frame(V1 = x)) %>% 
     data.table::rbindlist(idcol = col.name) %>% 
     plyr::rename(c('V1' = gsub('.json','.fileLocation', col.name)))
 })
 
-hr.table.meta = data.table::rbindlist(list(hr.tbl@values %>%
+hr.table.meta = data.table::rbindlist(list(hr.tbl %>%
                                             left_join(do.call(cbind, hr.json.loc[1]))),
                                      use.names = T, fill = T)%>%as.data.frame
  
@@ -173,21 +180,31 @@ hr.times <- rbind(hr.before.times, hr.after.times)
 
 # Extract HR for each row for before cardio 12MT, and merge all results into a list
 ## If using different table please check the corresponding column name and update accordingly below
+
+
 hr.before = apply(hr.table.meta,1,function(x){ 
-                tryCatch({mpowertools::getHrFromJson(as.character(x['heartRate_before_recorder.fileLocation']))},
+                tryCatch({
+                  jsonlite::fromJSON(as.character(x['heartRate_before_recorder.fileLocation'])) %>% 
+                    dplyr::mutate(t = timestamp) %>% 
+                    mhealthtools::get_heartrate(window_overlap = 0.9)
+                  },
                          error = function(e){ NA })
               }) 
 
 hr.after = apply(hr.table.meta,1,function(x){ 
-  tryCatch({mpowertools::getHrFromJson(as.character(x['heartRate_after_recorder.fileLocation']))},
+  tryCatch({
+    jsonlite::fromJSON(as.character(x['heartRate_after_recorder.fileLocation'])) %>% 
+      dplyr::mutate(t = timestamp) %>% 
+      mhealthtools::get_heartrate(window_overlap = 0.9)
+    },
            error = function(e){ NA })
 }) 
 
 # reshaping data
 hr.before.table = lapply(hr.before, function(ele){
   temp = list()
-  temp$error <- ele$error
-  temp$samplingRate <- ele$samplingRate
+  temp$error <- tryCatch({unlist(ele$error)}, error = function(e){ NA })
+  temp$samplingRate <- tryCatch({unlist(ele$sampling_rate)}, error = function(e){ NA })
   temp$redHR <-   tryCatch({unlist(ele$red$hr)}, error = function(e){ NA })
   temp$redConf <- tryCatch({unlist(ele$red$confidence)}, error = function(e){ NA })
   temp$greenHR <- tryCatch({unlist(ele$green$hr)}, error = function(e){ NA })
@@ -200,8 +217,8 @@ hr.before.table = lapply(hr.before, function(ele){
 
 hr.after.table = lapply(hr.after, function(ele){
   temp = list()
-  temp$error <- ele$error
-  temp$samplingRate <- ele$samplingRate
+  temp$error <- tryCatch({unlist(ele$error)}, error = function(e){ NA })
+  temp$samplingRate <- tryCatch({unlist(ele$sampling_rate)}, error = function(e){ NA })
   temp$redHR <-   tryCatch({unlist(ele$red$hr)}, error = function(e){ NA })
   temp$redConf <- tryCatch({unlist(ele$red$confidence)}, error = function(e){ NA })
   temp$greenHR <- tryCatch({unlist(ele$green$hr)}, error = function(e){ NA })
@@ -242,11 +259,6 @@ for (i in 1:length(hr.after)){
 }
 
 a <- unique(c(a.after,a.before))
-
-a <- vector()
-for (i in 1:length(hr.after)){
-  a <- c(a, dim(hr.after[[i]]$red)[1])
-  }
 
 # Subset the failed records and their details(columnsToSelect)
 #Note: These include low sampling rate errors too, crosscheck with the hr.table.meta
@@ -304,7 +316,9 @@ rm(aa)
 hr.results <- rbind(hr.after.table, hr.before.table) %>% dplyr::left_join(hr.times)
 
 # Change start and stop time to reflect start and stop time of each window, not record
-hr.results <- hr.results %>% dplyr::mutate(startTime = startTime + 5*(as.numeric(gsub('Window','',window))-1)) %>% 
+hr.results <- hr.results %>% dplyr::mutate(
+  startTime = startTime + 5 + # Added the 5s since we are removing 5s in mhealthtools processing
+    (10)*(1-0.9)*(as.numeric(gsub('Window','',window))-1)) %>% 
   dplyr::mutate(stopTime = startTime+10)
 
 # Github link
@@ -315,8 +329,8 @@ thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="b
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse
-write.csv(hr.results,file = paste0('hr_results',name,'.csv'),na="")
-obj = File(paste0('hr_results',name,'.csv'),
-           name = paste0('hr_results',name,'.csv'),
+write.csv(hr.results,file = paste0('hr_results_new2',name,'.csv'),na="")
+obj = File(paste0('hr_results_new2',name,'.csv'),
+           name = paste0('hr_results_new2',name,'.csv'),
            parentId = 'syn11968320')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)

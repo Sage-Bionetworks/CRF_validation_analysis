@@ -6,7 +6,7 @@
 ########################################################################
 rm(list=ls())
 gc()
-devtools::install_github('itismeghasyam/mpowertools')
+devtools::install_github('itismeghasyam/mhealthtools@develop')
 
 ##############
 # Required libraries
@@ -16,31 +16,33 @@ library(tidyr)
 library(plyr)
 library(dplyr)
 library(seewave)
-library(mpowertools) 
-library(synapseClient)
+library(mhealthtools) 
+library(synapser)
 library(githubr)
 library(ggplot2)
 library(parsedate)
 library(lubridate)
 library(jsonlite)
 
-synapseLogin()
+synLogin()
 
 #############
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #############
 
 ## Reference Table
-ref.tableId = 'syn11665074'
-ref.name = 'Cardio 12MT-v5'
+# ref.tableId = 'syn11665074'
+# ref.name = 'Cardio 12MT-v5'
 
 # ref.tableId = 'syn11580624'
 # ref.name = 'Cardio Stress Test-v1'
 
-# ref.tableId = 'syn11432994'
-# ref.name = 'Cardio Stair Step-v1'
+ref.tableId = 'syn11432994'
+ref.name = 'Cardio Stair Step-v1'
 
-ref.tbl <- synTableQuery(paste('select * from', ref.tableId))@values
+ref.tbl.syn <- synTableQuery(paste('select * from', ref.tableId))
+ref.tbl <- ref.tbl.syn$asDataFrame()
+ref.tbl$createdOn <- as.POSIXct(ref.tbl$createdOn/1000, origin = '1970-01-01')
 ref.tbl <- ref.tbl %>% dplyr::select(recordId, healthCode, createdOn, createdOnTimeZone) %>% 
   dplyr::mutate(createdDate = as.character(as.Date.character(createdOn))) %>% unique()
 
@@ -53,18 +55,19 @@ all.used.ids = c(all.used.ids, tableId)
 columnsToSelect = c('healthCode','createdDate','dataset','datasetInterval','datasetType')
 columnsToDownload = c('dataset')
 
-fitbit.tbl = synTableQuery(paste('select * from', tableId))
-
-fitbit.tbl@values = fitbit.tbl@values %>% dplyr::select(columnsToSelect)  
-
+fitbit.tbl.syn = synTableQuery(paste('select * from', tableId))
+fitbit.tbl <- fitbit.tbl.syn$asDataFrame() %>% 
+  dplyr::select(columnsToSelect) 
+  
 fitbit.json.loc = lapply(columnsToDownload, function(col.name){
-  tbl.files = synDownloadTableColumns(fitbit.tbl, col.name) %>%
+  tbl.files = synDownloadTableColumns(fitbit.tbl.syn, col.name) %>%
     lapply(function(x) data.frame(V1 = x)) %>% 
     data.table::rbindlist(idcol = col.name) %>% 
     plyr::rename(c('V1' = paste0(col.name,'.fileLocation')))
 })
 
-fitbit.table.meta = data.table::rbindlist(list(fitbit.tbl@values %>%
+fitbit.tbl$dataset <- as.character(fitbit.tbl$dataset)
+fitbit.table.meta = data.table::rbindlist(list(fitbit.tbl %>%
                                              left_join(do.call(cbind, fitbit.json.loc))),
                                       use.names = T, fill = T)%>%as.data.frame %>%
   dplyr::rename('fitbitCreatedDate' = 'createdDate')
@@ -146,4 +149,3 @@ obj = File(paste0('fitbit',ref.name,'.csv'),
            name = paste0('fitbit',ref.name,'.csv'), 
            parentId = 'syn11968320')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)
-

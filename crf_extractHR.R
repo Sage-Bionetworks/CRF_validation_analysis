@@ -123,7 +123,13 @@ hr.tbl$heartRate_before_recorder.json <- as.character(hr.tbl$heartRate_before_re
 hr.tbl$heartRate_after_recorder.json <- as.character(hr.tbl$heartRate_after_recorder.json)
 hr.tbl$heartRate_before_motion.json <- as.character(hr.tbl$heartRate_before_motion.json)
 hr.tbl$heartRate_after_motion.json <- as.character(hr.tbl$heartRate_after_motion.json)
-
+hr.tbl$createdOn <- as.POSIXct(hr.tbl$createdOn/1000, origin = '1970-01-01')
+hr.tbl$metadata.endDate <- as.POSIXct(hr.tbl$metadata.endDate/1000, origin = '1970-01-01') %>% 
+  as.character()
+hr.tbl$metadata.startDate <- as.POSIXct(hr.tbl$metadata.startDate/1000, origin = '1970-01-01') %>% 
+  as.character()
+# We lose the millisecond resolution in the createdOn, metadata.endDate, metadata.startDate columns,
+# but it is fine since we only care about the date later on
 
 hr.json.loc = lapply(columnsToDownload, function(col.name){
   tbl.files = synDownloadTableColumns(hr.tbl.syn, col.name) %>%
@@ -329,8 +335,8 @@ thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="b
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse
-write.csv(hr.results,file = paste0('hr_results_new2',name,'.csv'),na="")
-obj = File(paste0('hr_results_new2',name,'.csv'),
-           name = paste0('hr_results_new2',name,'.csv'),
+write.csv(hr.results,file = paste0('hr_results',name,'.csv'),na="")
+obj = File(paste0('hr_results',name,'.csv'),
+           name = paste0('hr_results',name,'.csv'),
            parentId = 'syn11968320')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)

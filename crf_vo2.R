@@ -11,7 +11,7 @@
 
 rm(list=ls())
 gc()
-devtools::install_github('itismeghasyam/mpowertools')
+devtools::install_github('itismeghasyam/mhealthtools@develop')
 
 ##############
 # Required libraries
@@ -21,7 +21,7 @@ library(tidyr)
 library(plyr)
 library(dplyr)
 library(seewave)
-library(mpowertools) 
+library(mhealthtools) 
 library(synapseClient)
 library(githubr)
 library(ggplot2)
@@ -60,7 +60,7 @@ vo2.tbl <- merged.stair.tbl %>%
                 window, startTime, stopTime,
                 fitbit.timestamp, fitbit.hr,
                 polar.timestamp, polar.hr) %>% 
-  dplyr::left_join(stair.times.tbl) %>% 
+  dplyr::left_join(stair.times.tbl) %>%
   dplyr::inner_join(pmi.metadata %>%
                       dplyr::select('externalId','Sex','Age','Field Day Wt (kg)')) %>% 
   dplyr::rename('Gender' = 'Sex',

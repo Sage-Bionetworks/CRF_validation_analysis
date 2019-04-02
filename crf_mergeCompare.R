@@ -34,7 +34,7 @@ synapseLogin()
 # name = 'Cardio 12MT-v5'
 
 # crf.tableId = 'syn12010132'
-crf.tableId = 'syn18483979' # for new2
+crf.tableId = 'syn12010132' #
 fitbit.tableId = 'syn12550818'
 polar.tableId = 'syn16811501'
 name = 'Cardio Stair Step-v1'
@@ -148,8 +148,8 @@ thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="b
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse
-write.csv(merged.tbl.2,file = paste0('merged_new',name,'.csv'),na="")
-obj = File(paste0('merged_new',name,'.csv'), 
-           name = paste0('merged_new',name,'.csv'), 
+write.csv(merged.tbl.2,file = paste0('merged',name,'.csv'),na="")
+obj = File(paste0('merged',name,'.csv'), 
+           name = paste0('merged',name,'.csv'), 
            parentId = 'syn11968320')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)

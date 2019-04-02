@@ -6,7 +6,7 @@
 ########################################################################
 rm(list=ls())
 gc()
-devtools::install_github('itismeghasyam/mpowertools')
+devtools::install_github('itismeghasyam/mhealthtools@develop')
 
 ##############
 # Required libraries
@@ -16,14 +16,14 @@ library(tidyr)
 library(plyr)
 library(dplyr)
 library(seewave)
-library(mpowertools) 
-library(synapseClient)
+library(mhealthtools) 
+library(synapser)
 library(githubr)
 library(ggplot2)
 library(parsedate)
 library(lubridate)
 
-synapseLogin()
+synLogin()
 
 #############
 # Required functions
@@ -38,9 +38,17 @@ getTimeZone = function(time)
   }
   else
   {
-    mins = as.numeric(substring(time, nchar(time)-1, nchar(time)));
-    hours = as.numeric(substring(time, nchar(time)-4, nchar(time)-3));
-    signt = substring(nchar(time)-5,nchar(time)-5)
+    tag = substring(time, nchar(time)-2, nchar(time)-2)
+    
+    if(tag == ':'){
+      mins = as.numeric(substring(time, nchar(time)-1, nchar(time)));
+      hours = as.numeric(substring(time, nchar(time)-4, nchar(time)-3));
+      signt = substring(time,nchar(time)-5,nchar(time)-5)
+    }else{
+      mins = as.numeric(substring(time, nchar(time)-1, nchar(time)));
+      hours = as.numeric(substring(time, nchar(time)-3, nchar(time)-2));
+      signt = substring(time,nchar(time)-4,nchar(time)-4)
+    }
     
     if(signt == '-'){
       return(timezone = hours + mins/60);
@@ -94,28 +102,32 @@ columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder
 columnsToSelect = c('recordId', 'healthCode','externalId','dataGroups','appVersion','createdOn',
                     'createdOnTimeZone','phoneInfo','metadata.startDate','metadata.endDate',
                     'heartRate_before_recorder.json','heartRate_after_recorder.json','stairStep_motion.json') # For Cardio 12MT
-hr.tbl = synTableQuery(paste('select * from', tableId))
-hr.tbl@values = hr.tbl@values %>% dplyr::select(columnsToSelect)  
+hr.tbl.syn = synTableQuery(paste('select * from', tableId))
+hr.tbl = hr.tbl.syn$asDataFrame() %>%
+  dplyr::select(columnsToSelect)  
 
 # heart rate files
 hr.json.loc = lapply(columnsToDownload[1:2], function(col.name){
-  tbl.files = synDownloadTableColumns(hr.tbl, col.name) %>%
+  tbl.files = synDownloadTableColumns(hr.tbl.syn, col.name) %>%
     lapply(function(x) data.frame(V1 = x)) %>% 
     data.table::rbindlist(idcol = col.name) %>% 
     plyr::rename(c('V1' = gsub('.json','.fileLocation', col.name)))
 })
 
-hr.table.meta = data.table::rbindlist(list(hr.tbl@values %>%
+hr.tbl$heartRate_after_recorder.json <- as.character(hr.tbl$heartRate_after_recorder.json)
+hr.tbl$heartRate_before_recorder.json <- as.character(hr.tbl$heartRate_before_recorder.json)
+hr.table.meta = data.table::rbindlist(list(hr.tbl %>%
                                              left_join(do.call(cbind, hr.json.loc))),
                                       use.names = T, fill = T)%>%as.data.frame
 # stair step motion files
 hr.json.loc = lapply(columnsToDownload[3], function(col.name){
-  tbl.files = synDownloadTableColumns(hr.tbl, col.name) %>%
+  tbl.files = synDownloadTableColumns(hr.tbl.syn, col.name) %>%
     lapply(function(x) data.frame(V1 = x)) %>% 
     data.table::rbindlist(idcol = col.name) %>% 
     plyr::rename(c('V1' = gsub('.json','.fileLocation', col.name)))
 })
 
+hr.table.meta$stairStep_motion.json <- as.character(hr.tbl$stairStep_motion.json)
 hr.table.meta = data.table::rbindlist(list(hr.table.meta %>%
                                              left_join(do.call(cbind, hr.json.loc))),
                                       use.names = T, fill = T)%>%as.data.frame
@@ -144,49 +156,3 @@ obj = File(paste0('stair_times',name,'.csv'),
            name = paste0('stair_times',name,'.csv'), 
            parentId = 'syn11968320')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)
-
-# # test
-# energyVecPerTimeWindow <- function(dat, windowLen = 5){
-#   nWindows = floor(max(dat$time)/windowLen)
-#   energyVec <- rep(NA, nWindows)
-#   for(i in seq(nWindows)){
-#     tempDat <- dat %>% dplyr::filter(time >= windowLen*(i-1)) %>% dplyr::filter(time < windowLen*i)
-#     energyVec[i] <- sum(tempDat$value^2) # Energy
-#     energyVec[i] <- statcomp::permutation_entropy(tempDat$value)
-#   }
-#   return(energyVec)
-# }
-# 
-# plotAccelGyro <- function(data.fileLocation, windowLen,plotParam = 'plot'){
-# dat <- jsonlite::fromJSON(as.character(data.fileLocation))
-# datAccel <- dat %>% dplyr::filter(sensorType == 'accelerometer')
-# datGyro <- dat %>% dplyr::filter(sensorType == 'gyro')
-# 
-# netAccel <- sqrt(datAccel$x^2 + datAccel$y^2 + datAccel$z^2)
-# netGyro <- sqrt(datGyro$x^2 + datGyro$y^2 + datGyro$z^2)
-# timeAccel <- datAccel$timestamp
-# timeGyro <- datGyro$timestamp
-# 
-# netAccel <- netAccel/sum(netAccel^2)
-# netGyro <- netGyro/sum(netGyro^2)
-# 
-# datAccel <- data.frame(value = netAccel, time = timeAccel)
-# datGyro <- data.frame(value = netGyro, time= timeGyro)
-# 
-# par(mfrow=c(2,1))
-# if(plotParam == 'plot'){
-# plot(timeAccel, netAccel, type = 'l')
-# plot(timeGyro, netGyro, type = 'l')
-#   }else{
-# # plot(energyVecPerTimeWindow(datAccel, windowLen), type = 'l')
-# # plot(energyVecPerTimeWindow(datGyro, windowLen), type = 'l')
-# a <- stats::acf(netAccel, lag.max = 1000, plot = F)$acf
-# plot(a, type = 'l', main = str(49+which.max(a[50:400])))
-# plot(stats::acf(netGyro, lag.max = 1000, plot = F)$acf, type = 'l')
-# 
-# }
-# }
-# 
-# plotAccelGyro(hr.table.meta$stairStep_motion.fileLocation[14],2,'plot')
-# plotAccelGyro(hr.table.meta$stairStep_motion.fileLocation[14],2,'energy')
-# 

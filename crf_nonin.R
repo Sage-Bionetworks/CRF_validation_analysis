@@ -6,13 +6,14 @@
 ########################################################################
 rm(list=ls())
 gc()
-devtools::install_github("Sage-Bionetworks/mhealthtools")
+# devtools::install_github("Sage-Bionetworks/mhealthtools")
+devtools::install_github("itismeghasyam/mhealthtools@develop")
 source('noninRead.R')
 options(digits.secs = 6)
 # to get the millisecond resolution
 
 ##############
-# Required libraries
+# Required libraries 
 ##############
 library(data.table)
 library(tidyr)
@@ -20,12 +21,12 @@ library(plyr)
 library(dplyr)
 library(seewave)
 library(mhealthtools) 
-library(synapseClient)
+library(synapser)
 library(githubr)
 library(ggplot2)
 library(parsedate)
 library(lubridate)
-synapseLogin()
+synLogin()
 
 ##############
 # Required functions
@@ -119,8 +120,8 @@ getHRdataframe <- function(hr.json.fileLocation, window_length_ = 10,
   temp$blueConf <- tryCatch({unlist(ele$blue$confidence)}, error = function(e){ NA })
   temp$method <- tryCatch({method_}, error = function(e){ NA })
   temp$samplingRate <- tryCatch({mhealthtools:::get_sampling_rate(hr.data)}, error = function(e){ NA })
-  temp$startTime <- tryCatch({hr.times$startTime + hr.data$timestamp[180]}, # The offset in time is because
-                             # of how mhealthtools works, we throw away the first 180 samples after filtering
+  temp$startTime <- tryCatch({hr.times$startTime + 5}, # The offset in time is because
+                             # of how mhealthtools works, we throw away 5s after filtering
                              error = function(e){ NA })
   temp$stopTime <- tryCatch({hr.times$stopTime}, error = function(e){ NA })
   
@@ -206,18 +207,31 @@ columnsToDownload = c('iPhone SE Nonin File','iPhone 8+ Nonin file','iPhone XS N
                       'Samsung Galaxy J7 Nonin File','Moto G6 Play Nonin File',
                       'Huawei Mate SE Nonin File','LG Stylo 4 Nonin File',
                       'Samsung Galaxy S9+ Nonin File') # For Cardio 12MT
-crf.validation.tbl = synTableQuery(paste('select * from', crf.tableId))
-crf.validation.tbl@values <- crf.validation.tbl@values %>%
+crf.validation.tbl.syn = synTableQuery(paste('select * from', crf.tableId))
+crf.validation.tbl <- crf.validation.tbl.syn$asDataFrame() %>%
   dplyr::filter(`Participant ID` > 1200)
 
 nonin.json.loc = lapply(columnsToDownload, function(col.name){
-  tbl.files = synDownloadTableColumns(crf.validation.tbl, col.name) %>%
+  tbl.files = synDownloadTableColumns(crf.validation.tbl.syn, col.name) %>%
     lapply(function(x) data.frame(V1 = x)) %>% 
     data.table::rbindlist(idcol = col.name) %>% 
     plyr::rename(c('V1' = gsub('Nonin','fileLocation', col.name)))
 })
 
-crf.validation.table.meta = data.table::rbindlist(list(crf.validation.tbl@values %>%
+crf.validation.tbl$`iPhone SE Nonin File` <- as.character(crf.validation.tbl$`iPhone SE Nonin File`)
+crf.validation.tbl$`iPhone 8+ Nonin file` <- as.character(crf.validation.tbl$`iPhone 8+ Nonin file`)
+crf.validation.tbl$`iPhone XS Nonin File` <- as.character(crf.validation.tbl$`iPhone XS Nonin File`)
+crf.validation.tbl$`Samsung Galaxy J7 Nonin File` <- as.character(crf.validation.tbl$`Samsung Galaxy J7 Nonin File`)
+crf.validation.tbl$`Samsung Galaxy S9+ Nonin File` <- as.character(crf.validation.tbl$`Samsung Galaxy S9+ Nonin File`)
+crf.validation.tbl$`Huawei Mate SE Nonin File` <- as.character(crf.validation.tbl$`Huawei Mate SE Nonin File`)
+crf.validation.tbl$`LG Stylo 4 Nonin File` <- as.character(crf.validation.tbl$`LG Stylo 4 Nonin File`)
+crf.validation.tbl$`Moto G6 Play Nonin File` <- as.character(crf.validation.tbl$`Moto G6 Play Nonin File`)
+
+
+
+
+
+crf.validation.table.meta = data.table::rbindlist(list(crf.validation.tbl %>%
                                                          left_join(do.call(cbind, nonin.json.loc[1]))),
                                                   use.names = T, fill = T)%>%as.data.frame
 
@@ -234,8 +248,8 @@ phone.tableId = 'syn17007713'
 name = 'HeartRate Measurement-v8'
 
 all.used.ids <- c(all.used.ids, phone.tableId)
-hr.tbl <- synTableQuery(paste("select * from ", phone.tableId))
-hr.tbl@values <- hr.tbl@values %>%
+hr.tbl.syn <- synTableQuery(paste("select * from ", phone.tableId))
+hr.tbl <- hr.tbl.syn$asDataFrame() %>%
   dplyr::filter(answers.participantID %in% crf.validation.table.meta$`Participant ID`) %>% 
   dplyr::filter(answers.participantID > 1200) # our participantsIDs are 12xx, 34xx and 56xx
 
@@ -243,13 +257,15 @@ columnsToDownload = c('rawData')
 # columnsToSelect = c('recordId', 'healthCode','rawData','phoneInfo','createdOn', 'createdOnTimeZone') 
 
 hr.json.loc = lapply(columnsToDownload, function(col.name){
-  tbl.files = synDownloadTableColumns(hr.tbl, col.name) %>%
+  tbl.files = synDownloadTableColumns(hr.tbl.syn, col.name) %>%
     lapply(function(x) data.frame(V1 = x)) %>% 
     data.table::rbindlist(idcol = col.name) %>% 
     plyr::rename(c('V1' = gsub('Data','.fileLocation', col.name)))
 })
 
-hr.table.meta = data.table::rbindlist(list(hr.tbl@values %>%
+hr.tbl$rawData <- as.character(hr.tbl$rawData)
+hr.tbl$createdOn <- as.POSIXct(hr.tbl$createdOn/1000, origin = '1970-01-01')
+hr.table.meta = data.table::rbindlist(list(hr.tbl %>%
                                              left_join(do.call(cbind, hr.json.loc[1]))),
                                       use.names = T, fill = T)%>%as.data.frame
 

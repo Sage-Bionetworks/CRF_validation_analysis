@@ -7,6 +7,8 @@
 
 # The formula for Vo2 Max using Milligan equations is from 191 of the actual thesis at
 # https://researchportal.port.ac.uk/portal/files/5926188/Ph.D._Thesis_Gemma_Milligan_April_2013.pdf
+# * The name of the person is Sharkey not Shakey, did not change this so that it does not affect
+# * down stream analysis
 
 
 rm(list=ls())
@@ -91,7 +93,7 @@ estimateVo2 <- function(pdat){
   vo2MaxMilligan1 <- function(hb30to60, age){
     if(!is.na(hb30to60) && !(is.na(age))){
       if(hb30to60>=0){
-      return(84.687-0.722*hb30to60-0.383*age)
+        return(84.687-0.722*hb30to60-0.383*age)
       }else{
         return(NA)
       }
@@ -136,15 +138,15 @@ estimateVo2 <- function(pdat){
   vo2MaxShakey <- function(hb15to30, weight, gender){
     if(tolower(gender) == 'male' && !(is.na(hb15to30)) && !(is.na(weight))){
       if(hb15to30>=0){
-      maxPulse <- 64.83 + 0.662*hb15to30
-      return(3.744*((weight+5)/(maxPulse-62)))
+        maxPulse <- 64.83 + 0.662*hb15to30
+        return(3.744*((weight+5)/(maxPulse-62)))
       }else{
         return(NA)
       }
     }else if(tolower(gender) == 'female' && !(is.na(hb15to30)) && !(is.na(weight))){
       if(hb15to30>=0){
-      maxPulse <- 51.33 + 0.75*hb15to30
-      return(3.75*((weight-3)/(maxPulse-65)))
+        maxPulse <- 51.33 + 0.75*hb15to30
+        return(3.75*((weight-3)/(maxPulse-65)))
       }else{
         return(NA)
       }
@@ -163,10 +165,10 @@ estimateVo2 <- function(pdat){
   pdat$stopTime[which(pdat$stopTime == '')] <- NA
   pdat$stairStartTime[which(pdat$stairStartTime == '')] <- NA
   pdat$stairStopTime[which(pdat$stairStopTime == '')] <- NA
-
-  hr15.timestamp <- as.POSIXct(pdat$stairStopTime[1]) + 15 #15s after the completion of the stair test
-  hr30.timestamp <- as.POSIXct(pdat$stairStopTime[1]) + 30 #30s after the completion of the stair test
-  hr60.timestamp <- as.POSIXct(pdat$stairStopTime[1]) + 60 #60s after the completion of the stair test
+  
+  # hr15.timestamp <- as.POSIXct(pdat$stairStopTime[1]) + 15 #15s after the completion of the stair test
+  # hr30.timestamp <- as.POSIXct(pdat$stairStopTime[1]) + 30 #30s after the completion of the stair test
+  # hr60.timestamp <- as.POSIXct(pdat$stairStopTime[1]) + 60 #60s after the completion of the stair test
   
   # hrX.distance is the difference between the times (in abs) between the hrX.timestamp and the window
   # start and stop time, helps us decide how close hrX.timestamp is to the midpoint of the window, 
@@ -197,50 +199,69 @@ estimateVo2 <- function(pdat){
     redHRt <- tryCatch({mean(dat.crf$redHR %>% as.numeric())}
                        ,error = function(e){return(NA)})
     greenHRt <- tryCatch({mean(dat.crf$greenHR %>% as.numeric())}
-                       ,error = function(e){return(NA)})
+                         ,error = function(e){return(NA)})
     blueHRt <- tryCatch({mean(dat.crf$blueHR %>% as.numeric())}
-                       ,error = function(e){return(NA)})
-
+                        ,error = function(e){return(NA)})
+    
     redHRt.conf <- tryCatch({mean(dat.crf$redConf %>% as.numeric())}
-                       ,error = function(e){return(NA)})
+                            ,error = function(e){return(NA)})
     greenHRt.conf <- tryCatch({mean(dat.crf$greenConf %>% as.numeric())}
-                            ,error = function(e){return(NA)})
+                              ,error = function(e){return(NA)})
     blueHRt.conf <- tryCatch({mean(dat.crf$blueConf %>% as.numeric())}
-                            ,error = function(e){return(NA)})
+                             ,error = function(e){return(NA)})
     
     dat.crf <- data.frame(metric = c('red','green','blue'),
-                      hr = c(redHRt, greenHRt, blueHRt),
-                      conf = c(redHRt.conf,greenHRt.conf,blueHRt.conf))
+                          hr = c(redHRt, greenHRt, blueHRt),
+                          conf = c(redHRt.conf,greenHRt.conf,blueHRt.conf))
     
     return(dat.crf)
-    }
+  }
   
   if(nrow(pdat.crf)!= 0){
-    hr15.dat <- getCrfHeartRate(pdat.crf, hr15.timestamp) %>% 
-      dplyr::rename('hr15' = 'hr',
-                    'conf15' = 'conf')
-    hr30.dat <- getCrfHeartRate(pdat.crf, hr30.timestamp) %>% 
-      dplyr::rename('hr30' = 'hr',
-                    'conf30' = 'conf')
-    hr60.dat <- getCrfHeartRate(pdat.crf, hr60.timestamp) %>% 
-      dplyr::rename('hr60' = 'hr',
-                    'conf60' = 'conf')
-    hr.crf.dat <- hr15.dat %>%
-      dplyr::left_join(hr30.dat) %>% 
-      dplyr::left_join(hr60.dat)
-    }else{
-    hr15.dat <- data.frame(metric = c('red','green','blue'),
-                           hr15 = rep(NA,3),
-                           conf15 = rep(NA,3))
-    hr30.dat <- data.frame(metric = c('red','green','blue'),
-                           hr30 = rep(NA,3),
-                           conf30 = rep(NA,3))
-    hr60.dat <- data.frame(metric = c('red','green','blue'),
-                           hr60 = rep(NA,3),
-                           conf60 = rep(NA,3))
-    hr.crf.dat <- hr15.dat %>%
-      dplyr::left_join(hr30.dat) %>% 
-      dplyr::left_join(hr60.dat)
+    # hr15.dat <- getCrfHeartRate(pdat.crf, hr15.timestamp) %>% 
+    #   dplyr::rename('hr15' = 'hr',
+    #                 'conf15' = 'conf')
+    # hr30.dat <- getCrfHeartRate(pdat.crf, hr30.timestamp) %>% 
+    #   dplyr::rename('hr30' = 'hr',
+    #                 'conf30' = 'conf')
+    # hr60.dat <- getCrfHeartRate(pdat.crf, hr60.timestamp) %>% 
+    #   dplyr::rename('hr60' = 'hr',
+    #                 'conf60' = 'conf')
+    # hr.crf.dat <- hr15.dat %>%
+    #   dplyr::left_join(hr30.dat) %>% 
+    #   dplyr::left_join(hr60.dat)
+    # }else{
+    # hr15.dat <- data.frame(metric = c('red','green','blue'),
+    #                        hr15 = rep(NA,3),
+    #                        conf15 = rep(NA,3))
+    # hr30.dat <- data.frame(metric = c('red','green','blue'),
+    #                        hr30 = rep(NA,3),
+    #                        conf30 = rep(NA,3))
+    # hr60.dat <- data.frame(metric = c('red','green','blue'),
+    #                        hr60 = rep(NA,3),
+    #                        conf60 = rep(NA,3))
+    # hr.crf.dat <- hr15.dat %>%
+    #   dplyr::left_join(hr30.dat) %>% 
+    #   dplyr::left_join(hr60.dat)
+    
+    hr.crf.dat <- lapply(seq(15,60), function(itime){ # Only need HR data for times 15-60s post jog
+      getCrfHeartRate(pdat.crf, as.POSIXct(pdat$stairStopTime[1]) + itime) %>% 
+        dplyr::mutate(time = itime)
+    }) %>% data.table::rbindlist()
+    
+  }else{
+    hr.crf.dat <- data.frame(hr = rep(NA, length(seq(15,60))),
+                             time = seq(15,60),
+                             metric = rep('red', length(seq(15,60))),
+                             conf = rep(NA, length(seq(15,60)))) %>% 
+      rbind(data.frame(hr = rep(NA, length(seq(15,60))),
+                                  time = seq(15,60),
+                                  metric = rep('green', length(seq(15,60))),
+                                  conf = rep(NA, length(seq(15,60))))) %>% 
+      rbind(data.frame(hr = rep(NA, length(seq(15,60))),
+                                  time = seq(15,60),
+                                  metric = rep('blue', length(seq(15,60))),
+                                  conf = rep(NA, length(seq(15,60))))) 
   }
   
   # Fitbit heartrate data
@@ -263,23 +284,38 @@ estimateVo2 <- function(pdat){
       dplyr::mutate_at(.vars = c('fitbit.timestamp'),
                        .funs = as.POSIXct)
     
-    fitbit.dat <- data.frame(hr15 = getFitbitHeartRate(pdat.fitbit, hr15.timestamp),
-                             hr30 = getFitbitHeartRate(pdat.fitbit, hr30.timestamp),
-                             hr60 = getFitbitHeartRate(pdat.fitbit, hr60.timestamp),
-                             conf15 = NA,
-                             conf30 = NA,
-                             conf60 = NA) %>% 
-      dplyr::mutate(metric = 'fitbit')
+    # fitbit.dat <- data.frame(hr15 = getFitbitHeartRate(pdat.fitbit, hr15.timestamp),
+    #                          hr30 = getFitbitHeartRate(pdat.fitbit, hr30.timestamp),
+    #                          hr60 = getFitbitHeartRate(pdat.fitbit, hr60.timestamp),
+    #                          conf15 = NA,
+    #                          conf30 = NA,
+    #                          conf60 = NA) %>% 
+    #   dplyr::mutate(metric = 'fitbit')
+    
+    fitbit.dat <- lapply(seq(15,60), function(itime){ # Only need HR data for times 15-60s post jog
+      getFitbitHeartRate(pdat.fitbit, as.POSIXct(pdat$stairStopTime[1]) + itime) %>% 
+        as.data.frame() %>% 
+        `colnames<-`(c('hr')) %>% 
+        dplyr::mutate(time = itime) %>%
+        dplyr::mutate(metric = 'fitbit')
+    }) %>% data.table::rbindlist() %>% 
+      dplyr::mutate(conf = NA)
+    
+    
   }else{
-    fitbit.dat <- data.frame(hr15 = NA,
-                             hr30 = NA,
-                             hr60 = NA,
-                             conf15 = NA,
-                             conf30 = NA,
-                             conf60 = NA) %>% 
-      dplyr::mutate(metric = 'fitbit')
+    # fitbit.dat <- data.frame(hr15 = NA,
+    #                          hr30 = NA,
+    #                          hr60 = NA,
+    #                          conf15 = NA,
+    #                          conf30 = NA,
+    #                          conf60 = NA) %>% 
+    #   dplyr::mutate(metric = 'fitbit')
+    fitbit.dat <- data.frame(hr = rep(NA, length(seq(15,60))),
+                             time = seq(15,60),
+                             metric = rep('fitbit', length(seq(15,60))),
+                             conf = rep(NA, length(seq(15,60))))
   }
-
+  
   # Polar heartrate data
   pdat.polar <- pdat %>%
     dplyr::select(polar.hr, polar.timestamp) %>% 
@@ -291,7 +327,7 @@ estimateVo2 <- function(pdat){
     hr.distance.opt.polar <- min(dat.polar$hr.distance.polar)
     dat.polar <- dat.polar %>% dplyr::filter(hr.distance.polar == hr.distance.opt.polar)
     polarHRt <- tryCatch({mean(dat.polar$polar.hr %>% as.numeric())}
-                          ,error = function(e){return(NA)})
+                         ,error = function(e){return(NA)})
     return(polarHRt)  
   }
   
@@ -300,38 +336,60 @@ estimateVo2 <- function(pdat){
       dplyr::mutate_at(.vars = c('polar.timestamp'),
                        .funs = as.POSIXct)
     
-    polar.dat <- data.frame(hr15 = getPolarHeartRate(pdat.polar, hr15.timestamp),
-                             hr30 = getPolarHeartRate(pdat.polar, hr30.timestamp),
-                             hr60 = getPolarHeartRate(pdat.polar, hr60.timestamp),
-                             conf15 = NA,
-                             conf30 = NA,
-                             conf60 = NA) %>% 
-      dplyr::mutate(metric = 'polar')
+    # polar.dat <- data.frame(hr15 = getPolarHeartRate(pdat.polar, hr15.timestamp),
+    #                          hr30 = getPolarHeartRate(pdat.polar, hr30.timestamp),
+    #                          hr60 = getPolarHeartRate(pdat.polar, hr60.timestamp),
+    #                          conf15 = NA,
+    #                          conf30 = NA,
+    #                          conf60 = NA) %>% 
+    #   dplyr::mutate(metric = 'polar')
+    
+    polar.dat <- lapply(seq(15,60), function(itime){ # Only need HR data for times 15-60s post jog
+      getPolarHeartRate(pdat.polar, as.POSIXct(pdat$stairStopTime[1]) + itime) %>% 
+        as.data.frame() %>% 
+        `colnames<-`(c('hr')) %>% 
+        dplyr::mutate(time = itime) %>%
+        dplyr::mutate(metric = 'polar')
+    }) %>% data.table::rbindlist() %>% 
+      dplyr::mutate(conf = NA)
+    
   }else{
-    polar.dat <- data.frame(hr15 = NA,
-                             hr30 = NA,
-                             hr60 = NA,
-                             conf15 = NA,
-                             conf30 = NA,
-                             conf60 = NA) %>% 
-      dplyr::mutate(metric = 'polar')
+    # polar.dat <- data.frame(hr15 = NA,
+    #                          hr30 = NA,
+    #                          hr60 = NA,
+    #                          conf15 = NA,
+    #                          conf30 = NA,
+    #                          conf60 = NA) %>% 
+    #   dplyr::mutate(metric = 'polar')
+    polar.dat <- data.frame(hr = rep(NA, length(seq(15,60))),
+                             time = seq(15,60),
+                             metric = rep('polar', length(seq(15,60))),
+                             conf = rep(NA, length(seq(15,60))))
   }
   
-    
-  hr.crf.dat <- hr.crf.dat %>% 
-    dplyr::mutate_at(.vars = c('hr15','conf15','hr30','conf30','hr60','conf60'),
-                     .funs = as.numeric)
-  fitbit.dat <- fitbit.dat %>% 
-    dplyr::mutate_at(.vars = c('hr15','conf15','hr30','conf30','hr60','conf60'),
-                     .funs = as.numeric)
-  polar.dat <- polar.dat %>% 
-    dplyr::mutate_at(.vars = c('hr15','conf15','hr30','conf30','hr60','conf60'),
-                     .funs = as.numeric)
   
-  dat <- rbind(hr.crf.dat, fitbit.dat, polar.dat) %>% 
-    dplyr::mutate(hb15to30 = 0.25*0.5*(hr15+hr30)) %>% 
-    dplyr::mutate(hb30to60 = 0.5*0.5*(hr30+hr60))
-
+  # hr.crf.dat <- hr.crf.dat %>% 
+  #   dplyr::mutate_at(.vars = c('hr15','conf15','hr30','conf30','hr60','conf60'),
+  #                    .funs = as.numeric)
+  # fitbit.dat <- fitbit.dat %>% 
+  #   dplyr::mutate_at(.vars = c('hr15','conf15','hr30','conf30','hr60','conf60'),
+  #                    .funs = as.numeric)
+  # polar.dat <- polar.dat %>% 
+  #   dplyr::mutate_at(.vars = c('hr15','conf15','hr30','conf30','hr60','conf60'),
+  #                    .funs = as.numeric)
+  
+  # print(pdat$recordId)
+  dat1530 <- rbind(hr.crf.dat, fitbit.dat, polar.dat) %>%
+    dplyr::filter(time < 31) %>% 
+    dplyr::group_by(metric) %>% 
+    dplyr::summarise(hb15to30 = 0.25*mean(hr, na.rm = T))
+  dat3060 <- rbind(hr.crf.dat, fitbit.dat, polar.dat) %>%
+    dplyr::filter(time > 30) %>% 
+    dplyr::group_by(metric) %>% 
+    dplyr::summarise(hb30to60 = 0.5*mean(hr, na.rm = T))
+  
+  dat <- dat1530 %>% dplyr::left_join(dat3060)
+  
   dat <- dat %>% dplyr::ungroup() %>% 
     dplyr::mutate(recordId = recordIdIn) %>% 
     dplyr::mutate(externalId = externalIdIn) %>% 
@@ -342,7 +400,7 @@ estimateVo2 <- function(pdat){
     dplyr::mutate(vo2Max.Milligan2 = vo2MaxMilligan2(hb30to60, age = ageIn, gender = genderIn)) %>% 
     dplyr::mutate(vo2Max.Shakey = vo2MaxShakey(hb15to30, weight = weightIn, gender = genderIn))
   
-
+  
   return(dat)
 }
 

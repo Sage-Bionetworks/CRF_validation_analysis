@@ -8,8 +8,12 @@ synapseLogin()
 
 est.fitz.tbl <- read.csv(synGet('syn18082209')@filePath, header = T, stringsAsFactors = F) %>% 
   dplyr::select(-X)
+all.used.ids <- 'syn180882209'
+
 merged.tbl <- read.csv(synGet('syn17973172')@filePath, header = T, stringsAsFactors = F) %>% 
   dplyr::select(-X)
+
+all.used.ids <- c(all.used.ids, 'syn17973172')
 merged.tbl$participantID <- as.character(merged.tbl$participantID)
 
 est.fitz.tbl$`Participant.ID` <- as.character(est.fitz.tbl$`Participant.ID`)
@@ -198,11 +202,17 @@ DescTools::CCC(aa$estHR, aa$noninHR)$rho.c$est
 mean(abs(aa$error))
 
 
+# Github link
+gtToken = 'github_token.txt';
+githubr::setGithubToken(as.character(read.table(gtToken)$V1))
+thisFileName <- 'crf_nonin_ccc.R'
+thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
+thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse
 write.csv(aa_all,file = paste0('merged_crf_nonin_acf_esthr','.csv'),na="")
 obj = File(paste0('merged_crf_nonin_acf_esthr','.csv'), 
            name = paste0('merged_crf_nonin_acf_esthr','.csv'), 
            parentId = 'syn12435196')
-obj = synStore(obj)
+obj = synStore(obj, used = all.used.ids, executed = thisFile)
 

@@ -3,6 +3,7 @@ gc()
 
 library(tidyverse)
 library(synapseClient)
+library(githubr)
 synapseLogin()
 # source('heartrate_extraction_functions.R')
 

@@ -125,6 +125,70 @@ jsonlite::toJSON(io_example_list, digits = 10) %>%
 a1 <- jsonlite::fromJSON('io_examples.json')
 all.equal(a1, io_example_list) # Check to see no data loss during json conversion
 
+##############
+# Calculate the outputs at each stage of the algo:
+# input -> filtered signal -> chunk it into 10s windows -> HR estimates per window
+##############
+
+window_length = 10 # 10s
+window_overlap = 0.9 # 90% overlap for 10s windows => 1s updates
+method = 'acf' 
+
+hr.data <- mhealthtools::heartrate_data
+sampling_rate <- mhealthtools:::get_sampling_rate(heartrate_data)
+# Convert window length from seconds to samples
+window_length <- round(sampling_rate * window_length)
+mean_filter_order <- 65
+if(sampling_rate <= 32){
+  mean_filter_order <- 33
+}
+if(sampling_rate <= 18){
+  mean_filter_order <- 19
+}
+if(sampling_rate <= 15){
+  mean_filter_order <- 15
+}
+
+
+hr.data.filtered <- hr.data %>% 
+  dplyr::select(red, green, blue) %>% 
+  na.omit() %>% 
+  lapply(mhealthtools:::get_filtered_signal,
+         sampling_rate,
+         mean_filter_order,
+         method) %>% 
+  as.data.frame()
+
+
+hr.data.filtered.chunks <- hr.data.filtered %>%
+  dplyr::select(red, green, blue) %>%
+  na.omit() %>%
+  lapply(mhealthtools:::window_signal, window_length, window_overlap, 'rectangle')
+
+hr.estimates <- hr.data.filtered.chunks %>%
+  lapply(function(dfl) {
+    dfl <- tryCatch({
+      apply(dfl, 2, mhealthtools:::get_hr_from_time_series, sampling_rate, method)
+    }, error = function(e) {c(hr= NA, confidence = NA) })
+    dfl <- as.data.frame(t(dfl))
+    colnames(dfl) <- c("hr", "confidence")
+    return(dfl)
+  })
+
+
+io_examples_whole <- list(hr_data = hr.data,
+                 hr_data_filtered = hr.data.filtered,
+                 hr_data_filtered_chunked = hr.data.filtered.chunks,
+                 hr_estimates = hr.estimates)
+
+# Store the input output examples as a JSON
+jsonlite::toJSON(io_examples_whole, digits = 10) %>% 
+  write_lines('io_examples_whole.json')
+a1 <- jsonlite::fromJSON('io_examples_whole.json')
+all.equal(a1, io_examples_whole) # Check to see no data loss during json conversion
+
+
+
 #######################################
 # Upload Data to Synapse 
 #######################################
@@ -163,4 +227,9 @@ obj = File('io_examples.json',
            parentId = 'syn11968320')
 obj = synStore(obj, executed = thisFile)
 
+# Input - output file for the whole algo
+obj = File('io_examples_whole.json',
+           name = 'io_examples_whole.json',
+           parentId = 'syn11968320')
+obj = synStore(obj, executed = thisFile)
 

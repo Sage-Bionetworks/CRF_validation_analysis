@@ -382,11 +382,13 @@ estimateVo2 <- function(pdat){
   dat1530 <- rbind(hr.crf.dat, fitbit.dat, polar.dat) %>%
     dplyr::filter(time < 31) %>% 
     dplyr::group_by(metric) %>% 
-    dplyr::summarise(hb15to30 = 0.25*mean(hr, na.rm = T))
+    dplyr::summarise(hb15to30 = 0.25*mean(hr, na.rm = T),
+                     conf15 = mean(conf, na.rm = T))
   dat3060 <- rbind(hr.crf.dat, fitbit.dat, polar.dat) %>%
     dplyr::filter(time > 30) %>% 
     dplyr::group_by(metric) %>% 
-    dplyr::summarise(hb30to60 = 0.5*mean(hr, na.rm = T))
+    dplyr::summarise(hb30to60 = 0.5*mean(hr, na.rm = T),
+                     conf30 = mean(conf, na.rm = T))
   
   dat <- dat1530 %>% dplyr::left_join(dat3060)
   

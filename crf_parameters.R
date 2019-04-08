@@ -138,8 +138,9 @@ window_length = 10 # 10s
 window_overlap = 0.9 # 90% overlap for 10s windows => 1s updates
 method = 'acf' 
 
-hr.data <- mhealthtools::heartrate_data
-sampling_rate <- mhealthtools:::get_sampling_rate(heartrate_data)
+hr.data <- mhealthtools::heartrate_data %>% 
+  dplyr::filter(t>0)
+sampling_rate <- mhealthtools:::get_sampling_rate(hr.data)
 # Convert window length from seconds to samples
 window_length <- round(sampling_rate * window_length)
 mean_filter_order <- 65

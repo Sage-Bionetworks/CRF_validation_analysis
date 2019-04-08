@@ -1,5 +1,6 @@
 rm(list=ls())
 gc()
+options(digits.secs = 10)
 devtools::install_github('itismeghasyam/mhealthtools@develop')
 # source('getHrFromJson.R')
 

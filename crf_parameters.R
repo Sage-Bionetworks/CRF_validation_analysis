@@ -13,6 +13,7 @@ options(digits.secs = 10)
 ##############
 library(tidyverse)
 library(synapseClient)
+library(githubr)
 synapseLogin()
 
 ##############

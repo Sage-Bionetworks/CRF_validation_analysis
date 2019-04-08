@@ -153,8 +153,8 @@ io_examples_whole_12 <- list(hr_data = hr.data,
 
 # Store the input output examples as a JSON
 jsonlite::toJSON(io_examples_whole_12, digits = 10) %>% 
-  write_lines('io_examples_whole_12.json')
-a1 <- jsonlite::fromJSON('io_examples_whole_12.json')
+  write_lines('io_examples_whole_12hz.json')
+a1 <- jsonlite::fromJSON('io_examples_whole_12hz.json')
 all.equal(a1, io_examples_whole_12) # Check to see no data loss during json conversion
 
 

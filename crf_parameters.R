@@ -66,6 +66,10 @@ meanCenteringFilter <- function(x, mean_filter_order = 65){
   return(y)
 }
 
+getACF <- function(x, max_lag){
+  x[is.na(x)] <- 0
+  return(stats::acf(x, lag.max = max_lag, plot = F)$acf)
+}
 ##############
 # Calculate the filter parameters for various integer values of sampling rates
 ##############
@@ -151,6 +155,7 @@ method = 'acf'
 hr.data <- mhealthtools::heartrate_data %>% 
   dplyr::filter(t>0)
 sampling_rate <- mhealthtools:::get_sampling_rate(hr.data)
+
 # Convert window length from seconds to samples
 window_length <- round(sampling_rate * window_length)
 mean_filter_order <- 65
@@ -180,6 +185,15 @@ hr.data.filtered.chunks <- hr.data.filtered %>%
   na.omit() %>%
   lapply(mhealthtools:::window_signal, window_length, window_overlap, 'rectangle')
 
+
+hr.data.filtered.chunks.acf <- hr.data.filtered.chunks %>% 
+  lapply(function(dfl) {
+    dfl <- tryCatch({
+      apply(dfl, 2, getACF, max_lag)
+    }, error = function(e) {c(hr= NA, confidence = NA) })
+    return(dfl)
+  })
+
 hr.estimates <- hr.data.filtered.chunks %>%
   lapply(function(dfl) {
     dfl <- tryCatch({
@@ -194,6 +208,7 @@ hr.estimates <- hr.data.filtered.chunks %>%
 io_examples_whole <- list(hr_data = hr.data,
                  hr_data_filtered = hr.data.filtered,
                  hr_data_filtered_chunked = hr.data.filtered.chunks,
+                 hr_data_filtered_chunked_acf = hr.data.filtered.chunks.acf,
                  hr_estimates = hr.estimates)
 
 # Store the input output examples as a JSON

@@ -106,6 +106,12 @@ xf_high <- signal::filter(bf_high,x) %>% as.numeric()
 # Get sample input-output example for mean-centering filter
 xf_mcf <- meanCenteringFilter(x, mean_filter_order = 65)
 
+# Get max and min lags for the ACF based on sampling rate, min and max hr
+min_hr = 45
+max_hr = 210
+max_lag = round(60 * sampling_rate / min_hr) # 4/3 fs is 45BPM
+min_lag = round(60 * sampling_rate / max_hr) # 1/3.5 fs is 210BPM
+
 # Get sample input-output example for ACF
 x_acf <- stats::acf(x, lag.max = 80, plot = F)$acf[,1,1]
 
@@ -120,7 +126,11 @@ io_example_list <- list(input = x ,
                   a_highpass = bf_high$a,
                   mean_filter_order = 65,
                   sampling_rate_round = 60,
-                  sampling_rate = sampling_rate
+                  sampling_rate = sampling_rate,
+                  max_hr = max_hr,
+                  min_hr = min_hr,
+                  max_lag = max_lag,
+                  min_lag = min_lag
 )
 
 # Store the input output examples as a JSON

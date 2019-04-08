@@ -93,7 +93,10 @@ mean_centering_filter_params <- lapply(sampling_rates, getMeanFilterOrder) %>%
 
 # Get sample input-output example for lowpass/highpass filters
 x <- mhealthtools::heartrate_data$red[1100:1400]
-sampling_rate_round <- mhealthtools:::get_sampling_rate(mhealthtools::heartrate_data) %>% 
+sampling_rate <- mhealthtools:::get_sampling_rate(
+  mhealthtools::heartrate_data %>% 
+    dplyr::filter(t > 19.53))
+sampling_rate_round <- sampling_rate %>% # This is to get remove the first 1099 samples 
   round() # this is 59
 bf_low <- signal::butter(7, 5/(sampling_rate_round/2), type = 'low')
 bf_high <- signal::butter(7, 0.5/(sampling_rate_round/2), type = 'high')
@@ -116,7 +119,8 @@ io_example_list <- list(input = x ,
                   b_highpass = bf_high$b,
                   a_highpass = bf_high$a,
                   mean_filter_order = 65,
-                  sampling_rate_round = 59
+                  sampling_rate_round = 60,
+                  sampling_rate = sampling_rate
 )
 
 # Store the input output examples as a JSON

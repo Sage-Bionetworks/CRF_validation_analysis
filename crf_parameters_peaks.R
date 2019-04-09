@@ -74,7 +74,7 @@ aliasedPeak <- mhealthtools:::getAliasingPeakLocation(hr = hr_initial_guess,
 
 # Store data into a JSON
 io_example_later_peak <- list(x = x_later,
-                                xacf = x,
+                                xacf = x[,1,1] %>% unlist(),
                                 hr_initial_guess = hr_initial_guess,
                                 est_hr = x_op[1],
                                 est_conf = x_op[2],

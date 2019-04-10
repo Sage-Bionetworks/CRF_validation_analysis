@@ -31,12 +31,17 @@ y_max <- max(y)
 y_min <- min(y)
 hr_initial_guess <- 60 * sampling_rate / (y_max_pos - 1)
 aliasedPeak <- mhealthtools:::getAliasingPeakLocation(hr = hr_initial_guess,
-                                       actual_lag = y_max_pos,
-                                       sampling_rate = sampling_rate,
-                                       min_lag = min_lag,
-                                       max_lag = max_lag)
+                                                      actual_lag = y_max_pos,
+                                                      sampling_rate = sampling_rate,
+                                                      min_lag = min_lag,
+                                                      max_lag = max_lag)
 # Store data into a JSON
 io_example_earlier_peak <- list(x = x_earlier,
+                                y = y,
+                                y_min = y_min,
+                                y_max = y_max, 
+                                x_min = min(x),
+                                x_max = max(x),
                                 xacf = x[,1,1] %>% unlist(),
                                 hr_initial_guess = hr_initial_guess,
                                 est_hr = x_op[1],
@@ -51,8 +56,8 @@ a1 <- jsonlite::fromJSON('io_example_earlier_peak.json')
 all.equal(a1, io_example_earlier_peak) # Check to see no data loss during json conversion
 
 
-## Sample data to generate the earlier peaks test case
-x_later <- 0.3*sin(10*t) + sin(20*t) + 0.2*cos(10*t)^2 + 0.1*rnorm(601)
+## Sample data to generate the later peaks test case
+x_later <- 0.1*sin(10*t) + sin(20*t) + 0.2*cos(10*t)^2 + 0.1*rnorm(601)
 x_op <- mhealthtools:::get_hr_from_time_series(x_later, 60)
 
 # How does this sample look like
@@ -74,19 +79,23 @@ aliasedPeak <- mhealthtools:::getAliasingPeakLocation(hr = hr_initial_guess,
 
 # Store data into a JSON
 io_example_later_peak <- list(x = x_later,
-                                xacf = x[,1,1] %>% unlist(),
-                                hr_initial_guess = hr_initial_guess,
-                                est_hr = x_op[1],
-                                est_conf = x_op[2],
-                                aliased_peak = aliasedPeak,
-                                sampling_rate = sampling_rate,
-                                min_lag = min_lag,
-                                max_lag = max_lag)
+                              y = y,
+                              y_min = y_min,
+                              y_max = y_max, 
+                              x_min = min(x),
+                              x_max = max(x),
+                              xacf = x[,1,1] %>% unlist(),
+                              hr_initial_guess = hr_initial_guess,
+                              est_hr = x_op[1],
+                              est_conf = x_op[2],
+                              aliased_peak = aliasedPeak,
+                              sampling_rate = sampling_rate,
+                              min_lag = min_lag,
+                              max_lag = max_lag)
 jsonlite::toJSON(io_example_later_peak, digits = 10) %>% 
   write_lines('io_example_later_peak.json')
 a1 <- jsonlite::fromJSON('io_example_later_peak.json')
 all.equal(a1, io_example_later_peak) # Check to see no data loss during json conversion
-
 
 ## Upload data to Synapse
 # Github link
@@ -107,4 +116,3 @@ obj = File('io_example_later_peak.json',
            name = 'io_example_later_peak.json',
            parentId = 'syn11968320')
 obj = synStore(obj, executed = thisFile)
-

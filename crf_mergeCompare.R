@@ -28,22 +28,19 @@ synapseLogin()
 ## Download both tables crf and fitbit
 
 # crf.tableId = 'syn12010238'
-# crf.tableId = 'syn17011216'  # for new
 # fitbit.tableId = 'syn12550816'
 # polar.tableId = 'syn16811362'
 # name = 'Cardio 12MT-v5'
 
 # crf.tableId = 'syn12010132'
-crf.tableId = 'syn12010132' #
-fitbit.tableId = 'syn12550818'
-polar.tableId = 'syn16811501'
-name = 'Cardio Stair Step-v1'
+# fitbit.tableId = 'syn12550818'
+# polar.tableId = 'syn16811501'
+# name = 'Cardio Stair Step-v1'
   
-# crf.tableId = 'syn12010237'
-# crf.tableId = 'syn17011217' # for new
-# fitbit.tableId = 'syn12550817'
-# polar.tableId = 'syn16811363'
-# name = 'Cardio Stress Test-v1'
+crf.tableId = 'syn12010237'
+fitbit.tableId = 'syn12550817'
+polar.tableId = 'syn16811363'
+name = 'Cardio Stress Test-v1'
 
 crf.tbl <- CovariateAnalysis::downloadFile(crf.tableId) %>% dplyr::select(-V1)
 fitbit.tbl <- CovariateAnalysis::downloadFile(fitbit.tableId) %>% dplyr::select(-V1)

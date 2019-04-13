@@ -89,7 +89,8 @@ method = 'acf'
 
 hr.data <- hr.data %>% 
   dplyr::filter(timestamp>0)
-sampling_rate <- mhealthtools:::get_sampling_rate(hr.data)
+# sampling_rate <- mhealthtools:::get_sampling_rate(hr.data)
+sampling_rate <- 1/median(diff(na.omit(hr.data$t)))
 
 # Get max and min lags for the ACF based on sampling rate, min and max hr
 min_hr = 45
@@ -174,6 +175,6 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 # Input - output file for the whole algo
 obj = File('io_examples_whole_12hz.json',
            name = 'io_examples_whole_12hz.json',
-           parentId = 'syn11968320')
+           parentId = 'syn18497861')
 obj = synStore(obj, executed = thisFile)
 

@@ -235,32 +235,32 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 write.csv(lowpass_filter_params,file = paste0('lowpass_filter_params','.csv'),na="")
 obj = File(paste0('lowpass_filter_params','.csv'), 
            name = paste0('lowpass_filter_params','.csv'), 
-           parentId = 'syn11968320')
+           parentId = 'syn18497861')
 obj = synStore(obj, executed = thisFile)
 
 # highpass params
 write.csv(highpass_filter_params,file = paste0('highpass_filter_params','.csv'),na="")
 obj = File(paste0('highpass_filter_params','.csv'), 
            name = paste0('highpass_filter_params','.csv'), 
-           parentId = 'syn11968320')
+           parentId = 'syn18497861')
 obj = synStore(obj, executed = thisFile)
 
 # mean centering filter params
 write.csv(mean_centering_filter_params,file = paste0('mean_centering_filter_params','.csv'),na="")
 obj = File(paste0('mean_centering_filter_params','.csv'), 
            name = paste0('mean_centering_filter_params','.csv'), 
-           parentId = 'syn11968320')
+           parentId = 'syn18497861')
 obj = synStore(obj, executed = thisFile)
 
 # Input - output example JSON
 obj = File('io_examples.json',
            name = 'io_examples.json',
-           parentId = 'syn11968320')
+           parentId = 'syn18497861')
 obj = synStore(obj, executed = thisFile)
 
 # Input - output file for the whole algo
 obj = File('io_examples_whole.json',
            name = 'io_examples_whole.json',
-           parentId = 'syn11968320')
+           parentId = 'syn18497861')
 obj = synStore(obj, executed = thisFile)
 

@@ -109,10 +109,10 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 # Input - output files for the peaks examples
 obj = File('io_example_earlier_peak.json',
            name = 'io_example_earlier_peak.json',
-           parentId = 'syn11968320')
+           parentId = 'syn18497861')
 obj = synStore(obj, executed = thisFile)
 
 obj = File('io_example_later_peak.json',
            name = 'io_example_later_peak.json',
-           parentId = 'syn11968320')
+           parentId = 'syn18497861')
 obj = synStore(obj, executed = thisFile)

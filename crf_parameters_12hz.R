@@ -70,6 +70,8 @@ hr.json.fileLocation <- "./cameraHeartRate_recorder.json"
 rawFiles <- unzip(hr.table.meta$raw.fileLocation[13] %>% as.character())
 hr.data <- jsonlite::fromJSON(hr.json.fileLocation) %>% 
   dplyr::select(-bpm_camera)
+nrow_data <- nrow(hr.data)
+hr.data <- hr.data[2:nrow_data,]
 hr.data$t <- hr.data$timestamp - min(hr.data$timestamp, na.rm = T)
 
 par(mfrow = c(3,1))
@@ -89,8 +91,8 @@ method = 'acf'
 
 hr.data <- hr.data %>% 
   dplyr::filter(timestamp>0)
-# sampling_rate <- mhealthtools:::get_sampling_rate(hr.data)
-sampling_rate <- 1/median(diff(na.omit(hr.data$t)))
+sampling_rate <- mhealthtools:::get_sampling_rate(hr.data)
+# sampling_rate <- 1/median(diff(na.omit(hr.data$t)))
 
 # Get max and min lags for the ACF based on sampling rate, min and max hr
 min_hr = 45

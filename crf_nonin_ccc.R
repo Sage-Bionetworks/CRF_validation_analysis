@@ -36,7 +36,7 @@ aa$estHR <- NA
 for(i in seq(nrow(aa))){
   
   hr_vec <- as.numeric(c(aa$redHR[i], aa$greenHR[i], aa$blueHR[i]))
-  hr_vec[hr_vec > 210] <- NA
+  hr_vec[hr_vec > 240] <- NA
   hr_vec[hr_vec < 44] <- NA
   na_index <- is.na(hr_vec)
   hr_vec <- na.omit(hr_vec)
@@ -91,28 +91,28 @@ for(i in seq(nrow(aa))){
   tag_hr <- which.min(abs(diff_vec))
   est_hr <- hr_vec[tag_hr]
   est_conf <- conf_vec[tag_hr]
-  tag_non <- which.max(abs(diff_vec))
-  non_considered_hr <- hr_vec[tag_non]
-  non_considered_conf <- conf_vec[tag_non]
-  
-  ratio_ <- est_hr/non_considered_hr
-  
-  if(est_hr < 90 & ratio_ < 0.55 &
-     est_conf > 0.35 & (abs(est_conf - non_considered_conf)<0.3)){
-    est_hr <- non_considered_hr
-    est_conf <- non_considered_conf
-  }
-
-  if(est_hr > 90 & ratio_ > 1.6 &
-     est_conf > 0.35 & (abs(est_conf - non_considered_conf)<0.3)){
-    est_hr <- non_considered_hr
-    est_conf <- non_considered_conf
-  }
-
-  if(max_conf/est_conf > 2){
-    est_conf <- max_conf
-    est_hr <- max_conf_hr
-  }
+  # tag_non <- which.max(abs(diff_vec))
+  # non_considered_hr <- hr_vec[tag_non]
+  # non_considered_conf <- conf_vec[tag_non]
+  # 
+  # ratio_ <- est_hr/non_considered_hr
+  # 
+  # if(est_hr < 90 & ratio_ < 0.55 &
+  #    est_conf > 0.35 & (abs(est_conf - non_considered_conf)<0.3)){
+  #   est_hr <- non_considered_hr
+  #   est_conf <- non_considered_conf
+  # }
+  # 
+  # if(est_hr > 90 & ratio_ > 1.6 &
+  #    est_conf > 0.35 & (abs(est_conf - non_considered_conf)<0.3)){
+  #   est_hr <- non_considered_hr
+  #   est_conf <- non_considered_conf
+  # }
+  # 
+  # if(max_conf/est_conf > 2){
+  #   est_conf <- max_conf
+  #   est_hr <- max_conf_hr
+  # }
   
   
   if(is.numeric(est_hr) & !purrr::is_empty(est_hr)){
@@ -184,7 +184,7 @@ aa_est_face$phone <- factor(aa_est_face$phone)
 # ggplot(aa_est_face, aes(x = phone, y = rho)) + geom_violin(trim = F) + ylim(c(0,1))
 
 ## heatmap of phone vs face.fitzpatrick, with CCC as the variable
-ggplot(aa_est_face, aes(x = face.fitzpatrick, y = phone)) +
+ggplot(aa_est_face, aes(x = face.fitzpatrick, y= phone)) +
   geom_tile(aes(fill = ccc)) + 
   geom_text(aes(label = round(ccc, 2))) +
   scale_fill_gradient(low = "red", high = "green") 

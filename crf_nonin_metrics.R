@@ -30,7 +30,7 @@ synapseLogin()
 ##############
 # Required functions
 ##############
-get_hrdata_window_metrics <- function(heartrate_data,
+get_hrdata_window_metrics <- function(hr_data,
                                       window_length = 10,
                                       window_overlap = 0.5,
                                       method = 'acf') {
@@ -39,7 +39,28 @@ get_hrdata_window_metrics <- function(heartrate_data,
   
   heartrate_error_frame <- data.frame(red = NA, green = NA, blue = NA,
                                       error = NA, sampling_rate = NA)
-  sampling_rate <- mhealthtools:::get_sampling_rate(heartrate_data)
+  
+  sampling_rate <- mhealthtools:::get_sampling_rate(hr_data)
+  
+  diff_t_vec  <- tryCatch({
+    diff(na.omit(hr_data$t))
+    },
+         error = function(e){NA})  
+  if(is.null(diff_t_vec)){
+    diff_t_vec <- NA
+  }
+  
+  md_diff_t <- median(diff_t_vec)
+  sd_diff_t <- sd(diff_t_vec)
+  max_diff_t <- max(diff_t_vec)
+  min_diff_t <- min(diff_t_vec)
+  
+  sampling_rate_md <- 1/md_diff_t
+  sampling_rate_md_plus <- 1/(md_diff_t - sd_diff_t)
+  sampling_rate_md_minus <- 1/(md_diff_t + sd_diff_t)
+  sampling_rate_max <- 1/min_diff_t
+  sampling_rate_min <- 1/max_diff_t
+  
   if (is.infinite(sampling_rate) || is.na(sampling_rate)) {
     heartrate_error_frame$error <- paste("Sampling Rate calculated from timestamp is Inf",
                                          "or NaN / timestamp not found in json")
@@ -60,19 +81,19 @@ get_hrdata_window_metrics <- function(heartrate_data,
   }
   
   # Split each color into segments based on window_length
-  heartrate_data_windowed <- tryCatch({
-    heartrate_data %>%
+  hr_data_windowed <- tryCatch({
+    hr_data %>%
       dplyr::select(red, green, blue) %>%
       na.omit() %>%
       lapply(mhealthtools:::window_signal, window_length, window_overlap, 'rectangle')
   }, error = function(e) { NA })
-  if (all(is.na(heartrate_data))) {
+  if (all(is.na(hr_data))) {
     heartrate_error_frame$error <- "red, green, blue cannot be read from JSON"
     return(heartrate_error_frame)
   }
   
   # Get ACF metrics for each filtered segment of each color
-  heartrate_data_time <- heartrate_data_windowed %>%
+  hr_data_time <- hr_data_windowed %>%
     lapply(function(dfl) {
       dfl <- tryCatch({
         apply(dfl, 2, getWindowMetricsTime, sampling_rate) %>% 
@@ -83,16 +104,16 @@ get_hrdata_window_metrics <- function(heartrate_data,
       dfl$window <- seq(nrow(dfl))
       return(dfl)
     })
-  heartrate_data_time$green$channel <- 'green'
-  heartrate_data_time$blue$channel <- 'blue'
-  heartrate_data_time <- heartrate_data_time %>%
+  hr_data_time$green$channel <- 'green'
+  hr_data_time$blue$channel <- 'blue'
+  hr_data_time <- hr_data_time %>%
     data.table::rbindlist(fill = T)
-  # heartrate_data$error <- "none"
+  # hr_data$error <- "none"
   
   
   
-  heartrate_data_filtered <- tryCatch({
-    heartrate_data %>% 
+  hr_data_filtered <- tryCatch({
+    hr_data %>% 
       dplyr::select(red, green, blue) %>% 
       na.omit() %>% 
       lapply(mhealthtools:::get_filtered_signal,
@@ -101,26 +122,26 @@ get_hrdata_window_metrics <- function(heartrate_data,
              method) %>% 
       as.data.frame()
   }, error = function(e){NA})
-  if (all(is.na(heartrate_data))) {
+  if (all(is.na(hr_data))) {
     heartrate_error_frame$error <- "Error in filtering the signal"
     return(heartrate_error_frame)
   }
   
   
   # Split each color into segments based on window_length
-  heartrate_data_filtered_windowed <- tryCatch({
-    heartrate_data_filtered %>%
+  hr_data_filtered_windowed <- tryCatch({
+    hr_data_filtered %>%
       dplyr::select(red, green, blue) %>%
       na.omit() %>%
       lapply(mhealthtools:::window_signal, window_length, window_overlap, 'rectangle')
   }, error = function(e) { NA })
-  if (all(is.na(heartrate_data))) {
+  if (all(is.na(hr_data))) {
     heartrate_error_frame$error <- "red, green, blue cannot be read from JSON"
     return(heartrate_error_frame)
   }
   
   # Get ACF metrics for each filtered segment of each color
-  heartrate_data_acf <- heartrate_data_filtered_windowed %>%
+  hr_data_acf <- hr_data_filtered_windowed %>%
     lapply(function(dfl) {
       dfl <- tryCatch({
         apply(dfl, 2, getWindowMetricsAcf, sampling_rate) %>% 
@@ -131,16 +152,22 @@ get_hrdata_window_metrics <- function(heartrate_data,
       dfl$window <- seq(nrow(dfl))
       return(dfl)
     })
-  heartrate_data_acf$green$channel <- 'green'
-  heartrate_data_acf$blue$channel <- 'blue'
-  heartrate_data_acf <- heartrate_data_acf %>%
+  hr_data_acf$green$channel <- 'green'
+  hr_data_acf$blue$channel <- 'blue'
+  hr_data_acf <- hr_data_acf %>%
     data.table::rbindlist(fill = T)
-  # heartrate_data$error <- "none"
-  heartrate_data_acf$window <- heartrate_data_acf$window +
-    max(heartrate_data_time$window) - max(heartrate_data_acf$window)
+  # hr_data$error <- "none"
+  hr_data_acf$window <- hr_data_acf$window +
+    max(hr_data_time$window) - max(hr_data_acf$window)
   
-  hr_data_metrics <- heartrate_data_time %>% 
-    dplyr::left_join(heartrate_data_acf)
+  hr_data_metrics <- hr_data_time %>% 
+    dplyr::left_join(hr_data_acf) %>% 
+    dplyr::mutate(sampling_rate = sampling_rate,
+                  sampling_rate_md = sampling_rate_md,
+                  sampling_rate_md_plus = sampling_rate_md_plus,
+                  sampling_rate_md_minus = sampling_rate_md_minus,
+                  sampling_rate_max = sampling_rate_max,
+                  sampling_rate_min = sampling_rate_min)
   
   return(hr_data_metrics)
 }
@@ -276,6 +303,8 @@ getHRMetricsdataframe <- function(hr.json.fileLocation, window_length_ = 10,
     hr.data <- NA
   }else{
     hr.data <- jsonlite::fromJSON(hr.json.fileLocation)
+    nrow_data <- nrow(hr.data)
+    hr.data <- hr.data[2:nrow_data,] # remove the first sample for time
     hr.data$timestamp <- hr.data$timestamp - min(hr.data$timestamp, na.rm = T)
     hr.data$t <- hr.data$timestamp
     
@@ -346,6 +375,27 @@ deMystifyITA <- function(ITA){
   
   return(de.ita)
 }
+
+est.fitz.tbl <- read.csv(synGet('syn18082209')@filePath, header = T, stringsAsFactors = F) %>% 
+  dplyr::select(-X)
+merged.tbl <- read.csv(synGet('syn17973172')@filePath, header = T, stringsAsFactors = F) %>% 
+  dplyr::select(-X)
+merged.tbl$participantID <- as.character(merged.tbl$participantID)
+
+est.fitz.tbl$`Participant.ID` <- as.character(est.fitz.tbl$`Participant.ID`)
+phone.hr.metrics.tbl <- phone.hr.metrics.tbl %>% 
+  dplyr::left_join(est.fitz.tbl %>% 
+                     dplyr::rename(participantID = Participant.ID)) %>% 
+  na.omit()
+
+red.tbl <- phone.hr.metrics.tbl %>% 
+  dplyr::filter(channel == 'red')
+green.tbl <- phone.hr.metrics.tbl %>% 
+  dplyr::filter(channel == 'green')
+blue.tbl <- phone.hr.metrics.tbl %>% 
+  dplyr::filter(channel == 'blue')
+
+
 
 #######################################
 # Download Synapse Table, and select and download required columns, figure out filepath locations
@@ -424,7 +474,7 @@ crf.validation.table.meta <- crf.validation.table.meta %>%
 # Extract Metrics from phone json files
 #######################################
 
-phone.hr.metrics.tbl <- apply(hr.table.meta[1:2,],1,function(x){
+phone.hr.metrics.tbl <- apply(hr.table.meta,1,function(x){
   tryCatch({
     hr.json.fileLocation <- tryCatch({
       rawFiles <- unzip(x['raw.fileLocation'] %>% as.character())

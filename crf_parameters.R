@@ -99,11 +99,11 @@ mean_centering_filter_params <- lapply(sampling_rates, getMeanFilterOrder) %>%
 # Get sample input-output example for lowpass/highpass filters
 x <- mhealthtools::heartrate_data$red[1100:1400]
 
-# sampling_rate <- mhealthtools:::get_sampling_rate(
-#   mhealthtools::heartrate_data %>%
-#     dplyr::filter(t > 19.53))
+sampling_rate <- mhealthtools:::get_sampling_rate(
+  mhealthtools::heartrate_data %>%
+    dplyr::filter(t > 19.53))
 
-sampling_rate <- 1/median(diff(na.omit(mhealthtools::heartrate_data$t[1100:1400])))
+# sampling_rate <- 1/median(diff(na.omit(mhealthtools::heartrate_data$t[1100:1400])))
 # Use median based method to estimate sampling rate
 
 sampling_rate_round <- sampling_rate %>% # This is to get remove the first 1099 samples 
@@ -158,11 +158,12 @@ window_length = 10 # 10s
 window_overlap = 0.9 # 90% overlap for 10s windows => 1s updates
 method = 'acf' 
 
-hr.data <- mhealthtools::heartrate_data %>% 
-  dplyr::filter(t>0)
+hr.data <- mhealthtools::heartrate_data
+nrow_data <- nrow(hr.data)
+hr.data <- hr.data[2:nrow_data,]
 
-# sampling_rate <- mhealthtools:::get_sampling_rate(hr.data)
-sampling_rate <- 1/median(diff(na.omit(hr.data$t)))
+sampling_rate <- mhealthtools:::get_sampling_rate(hr.data)
+# sampling_rate <- 1/median(diff(na.omit(hr.data$t)))
 # Use median based sampling_rate calculation
 
 # Convert window length from seconds to samples

@@ -44,8 +44,8 @@ get_hrdata_window_metrics <- function(hr_data,
   
   diff_t_vec  <- tryCatch({
     diff(na.omit(hr_data$t))
-    },
-         error = function(e){NA})  
+  },
+  error = function(e){NA})  
   if(is.null(diff_t_vec)){
     diff_t_vec <- NA
   }
@@ -297,7 +297,7 @@ getWindowMetricsAcf <- function(x, sampling_rate, channel = 'red',
 # Get a curated heart rate dataframe from the mhealthtools::get_heartrate() result,
 # and add method column ('acf','peak','psd') to it
 getHRMetricsdataframe <- function(hr.json.fileLocation, window_length_ = 10,
-                           window_overlap_ = 0.9, method_ = 'acf'){
+                                  window_overlap_ = 0.9, method_ = 'acf'){
   
   if(is.na(hr.json.fileLocation)){
     hr.data <- NA
@@ -485,7 +485,7 @@ crf.validation.table.meta <- crf.validation.table.meta %>%
 # Extract Metrics from phone json files
 #######################################
 
-phone.hr.metrics.tbl <- apply(hr.table.meta,1,function(x){
+phone.hr.metrics.tbl.x <- apply(hr.table.meta,1,function(x){
   tryCatch({
     hr.json.fileLocation <- tryCatch({
       rawFiles <- unzip(x['raw.fileLocation'] %>% as.character())
@@ -499,21 +499,26 @@ phone.hr.metrics.tbl <- apply(hr.table.meta,1,function(x){
       # unlink(rawFiles)
     }else{
       hr.results <- getHRMetricsdataframe(hr.json.fileLocation, window_length_ = 10,
-                                            window_overlap_ = 0.9, method_ = 'acf') 
+                                          window_overlap_ = 0.9, method_ = 'acf') 
       hr.results <- hr.results %>% 
         dplyr::mutate(phone = deMystifyPhone(x['phoneInfo'] %>% as.character()),
-                      participantID = x['answers.participantID'])
+                      participantID = x['answers.participantID'],
+                      recordId = x['recordId'])
       unlink(rawFiles)
     }
     return(hr.results)
   },
   error = function(e){
-  return(NULL)
+    return(NULL)
   })
-}) %>% data.table::rbindlist() %>%
+})  %>% data.table::rbindlist(fill = TRUE) %>%
   as.data.frame() %>%
+  dplyr::select(-V1) %>% 
   unique()
 
+phone.hr.metrics.tbl <- hr.table.meta %>% 
+  dplyr::select(recordId, healthCode) %>% 
+  dplyr::left_join(phone.hr.metrics.tbl.x)
 
 #######################################
 # Upload Data to Synapse 

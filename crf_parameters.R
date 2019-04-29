@@ -154,8 +154,8 @@ all.equal(a1, io_example_list) # Check to see no data loss during json conversio
 # input -> filtered signal -> chunk it into 10s windows -> HR estimates per window
 ##############
 
-window_length = 10 # 10s
-window_overlap = 0.9 # 90% overlap for 10s windows => 1s updates
+window_length = 15 # 15s
+window_overlap = 14/15 # 14s overlap for 15s windows => 1s updates
 method = 'acf' 
 
 hr.data <- mhealthtools::heartrate_data
@@ -179,21 +179,24 @@ if(sampling_rate <= 15){
   mean_filter_order <- 15
 }
 
-
-hr.data.filtered <- hr.data %>% 
-  dplyr::select(red, green, blue) %>% 
-  na.omit() %>% 
-  lapply(mhealthtools:::get_filtered_signal,
-         sampling_rate,
-         mean_filter_order,
-         method) %>% 
-  as.data.frame()
-
-
-hr.data.filtered.chunks <- hr.data.filtered %>%
+hr.data.chunks <- hr.data %>%
   dplyr::select(red, green, blue) %>%
   na.omit() %>%
   lapply(mhealthtools:::window_signal, window_length, window_overlap, 'rectangle')
+
+
+hr.data.filtered.chunks <- hr.data.chunks %>%
+  lapply(function(dfl){
+    dfl[is.na(dfl)] <- 0
+    dfl = tryCatch({
+      apply(dfl,2,
+            mhealthtools:::get_filtered_signal,
+            sampling_rate,
+            mean_filter_order,
+            method) %>% 
+        as.data.frame()
+    }, error = function(e){NA})
+  })
 
 
 hr.data.filtered.chunks.acf <- hr.data.filtered.chunks %>% 
@@ -216,7 +219,7 @@ hr.estimates <- hr.data.filtered.chunks %>%
 
 
 io_examples_whole <- list(hr_data = hr.data,
-                 hr_data_filtered = hr.data.filtered,
+                 hr_data_chunks = hr.data.chunks,
                  hr_data_filtered_chunked = hr.data.filtered.chunks,
                  hr_data_filtered_chunked_acf = hr.data.filtered.chunks.acf,
                  hr_estimates = hr.estimates)

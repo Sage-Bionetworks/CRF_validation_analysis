@@ -6,7 +6,7 @@
 ########################################################################
 rm(list=ls())
 gc()
-devtools::install_github('itismeghasyam/mhealthtools@develop')
+devtools::install_github('itismeghasyam/mhealthtools@crfAppVersion')
 # source('getHrFromJson.R')
 
 ##############
@@ -123,13 +123,6 @@ hr.tbl$heartRate_before_recorder.json <- as.character(hr.tbl$heartRate_before_re
 hr.tbl$heartRate_after_recorder.json <- as.character(hr.tbl$heartRate_after_recorder.json)
 hr.tbl$heartRate_before_motion.json <- as.character(hr.tbl$heartRate_before_motion.json)
 hr.tbl$heartRate_after_motion.json <- as.character(hr.tbl$heartRate_after_motion.json)
-hr.tbl$createdOn <- as.POSIXct(hr.tbl$createdOn/1000, origin = '1970-01-01')
-hr.tbl$metadata.endDate <- as.POSIXct(hr.tbl$metadata.endDate/1000, origin = '1970-01-01') %>% 
-  as.character()
-hr.tbl$metadata.startDate <- as.POSIXct(hr.tbl$metadata.startDate/1000, origin = '1970-01-01') %>% 
-  as.character()
-# We lose the millisecond resolution in the createdOn, metadata.endDate, metadata.startDate columns,
-# but it is fine since we only care about the date later on
 
 hr.json.loc = lapply(columnsToDownload, function(col.name){
   tbl.files = synDownloadTableColumns(hr.tbl.syn, col.name) %>%
@@ -323,7 +316,7 @@ hr.results <- rbind(hr.after.table, hr.before.table) %>% dplyr::left_join(hr.tim
 
 # Change start and stop time to reflect start and stop time of each window, not record
 hr.results <- hr.results %>% dplyr::mutate(
-  startTime = startTime + 5 + # Added the 5s since we are removing 5s in mhealthtools processing
+  startTime = startTime + 5 + # because we lose ~5 seconds in filtering in mhealthtools
     (10)*(1-0.9)*(as.numeric(gsub('Window','',window))-1)) %>% 
   dplyr::mutate(stopTime = startTime+10)
 

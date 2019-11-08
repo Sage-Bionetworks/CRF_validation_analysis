@@ -16,14 +16,14 @@ library(plyr)
 library(dplyr)
 library(seewave)
 library(mhealthtools) 
-library(synapseClient)
+library(synapser)
 library(githubr)
 library(ggplot2)
 library(parsedate)
 library(lubridate)
 library(CovariateAnalysis)
 
-synapseLogin()
+synLogin()
 
 ## Download both tables crf and fitbit
 
@@ -32,19 +32,19 @@ synapseLogin()
 # polar.tableId = 'syn16811362'
 # name = 'Cardio 12MT-v5'
 
-# crf.tableId = 'syn12010132'
-# fitbit.tableId = 'syn12550818'
-# polar.tableId = 'syn16811501'
-# name = 'Cardio Stair Step-v1'
+crf.tableId = 'syn12010132'
+fitbit.tableId = 'syn12550818'
+polar.tableId = 'syn16811501'
+name = 'Cardio Stair Step-v1'
   
-crf.tableId = 'syn12010237'
-fitbit.tableId = 'syn12550817'
-polar.tableId = 'syn16811363'
-name = 'Cardio Stress Test-v1'
+# crf.tableId = 'syn12010237'
+# fitbit.tableId = 'syn12550817'
+# polar.tableId = 'syn16811363'
+# name = 'Cardio Stress Test-v1'
 
-crf.tbl <- CovariateAnalysis::downloadFile(crf.tableId) %>% dplyr::select(-V1)
-fitbit.tbl <- CovariateAnalysis::downloadFile(fitbit.tableId) %>% dplyr::select(-V1)
-polar.tbl <- CovariateAnalysis::downloadFile(polar.tableId) %>% dplyr::select(-V1)
+crf.tbl <- read.csv(synapser::synGet(crf.tableId)$path) %>% dplyr::select(-X)
+fitbit.tbl <- read.csv(synapser::synGet(fitbit.tableId)$path) %>% dplyr::select(-X)
+polar.tbl <- read.csv(synapser::synGet(polar.tableId)$path) %>% dplyr::select(-X)
 all.used.ids <- c(crf.tableId, fitbit.tableId, polar.tableId)
 
 # Convert times into POSIXlt format

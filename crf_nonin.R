@@ -7,7 +7,7 @@
 rm(list=ls())
 gc()
 # devtools::install_github("Sage-Bionetworks/mhealthtools")
-devtools::install_github("itismeghasyam/mhealthtools@develop")
+devtools::install_github("itismeghasyam/mhealthtools@crfAppVersion")
 source('noninRead.R')
 options(digits.secs = 6)
 # to get the millisecond resolution
@@ -264,7 +264,6 @@ hr.json.loc = lapply(columnsToDownload, function(col.name){
 })
 
 hr.tbl$rawData <- as.character(hr.tbl$rawData)
-hr.tbl$createdOn <- as.POSIXct(hr.tbl$createdOn/1000, origin = '1970-01-01')
 hr.table.meta = data.table::rbindlist(list(hr.tbl %>%
                                              left_join(do.call(cbind, hr.json.loc[1]))),
                                       use.names = T, fill = T)%>%as.data.frame

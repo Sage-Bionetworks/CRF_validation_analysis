@@ -13,7 +13,7 @@
 
 rm(list=ls())
 gc()
-devtools::install_github('itismeghasyam/mhealthtools@develop')
+devtools::install_github('itismeghasyam/mhealthtools@crfAppVersion')
 
 ##############
 # Required libraries
@@ -24,13 +24,13 @@ library(plyr)
 library(dplyr)
 library(seewave)
 library(mhealthtools) 
-library(synapseClient)
+library(synapser)
 library(githubr)
 library(ggplot2)
 library(parsedate)
 library(lubridate)
 library(readxl)
-synapseLogin()
+synLogin()
 
 
 #############
@@ -39,19 +39,21 @@ synapseLogin()
 
 # Metadata containing V02 max values, weights etc.,
 metadata.id = 'syn12257142'
-pmi.metadata <- readxl::read_xlsx(synapseClient::synGet(metadata.id)@filePath) %>%
+pmi.metadata <- readxl::read_xlsx(synapser::synGet(metadata.id)$path) %>%
   dplyr::rename('externalId' = 'CRF User name') %>% 
   dplyr::mutate('inClinic' = TRUE)
 all.used.ids <- c(metadata.id)
 
 # merged table containing polar, fitbit and crf heart rate values
 merged.stair.tableId = 'syn12612345'
-merged.stair.tbl <- CovariateAnalysis::downloadFile(merged.stair.tableId) %>% dplyr::select(-V1)
+merged.stair.tbl <- read.csv(synapser::synGet(merged.stair.tableId)$path) %>% 
+  dplyr::select(-X)
 all.used.ids <- c(all.used.ids, merged.stair.tableId)
 
 # Stair step test start and stop times
 stair.times.tableId = 'syn12673572'
-stair.times.tbl <- CovariateAnalysis::downloadFile(stair.times.tableId) %>% dplyr::select(-V1)
+stair.times.tbl <- read.csv(synapser::synGet(stair.times.tableId)$path) %>% 
+  dplyr::select(-X)
 all.used.ids <- c(all.used.ids, stair.times.tableId)
 
 # Get vo2 max tbl with all the required variables
@@ -420,21 +422,21 @@ vo2.estiamtes.tbl <- vo2.tbl %>%
 
 
 
-## Refine our data to high confidence scores
-aa.crf <- vo2.estiamtes.tbl %>% 
-  dplyr::left_join(pmi.metadata) %>% 
-  dplyr::filter(conf15 > 0.5, conf30 > 0.5, conf60 > 0.5) %>% 
-  dplyr::select(metric, externalId, age, gender, recordId,
-                vo2Max.Milligan1, vo2Max.Milligan2,vo2Max.Shakey,
-                `Measured VO2max (mL/kg/min)`,`Cooper VO2`,inClinic)
-aa.fitbit <- vo2.estiamtes.tbl %>% 
-  dplyr::filter(recordId %in% aa.crf$recordId,
-                metric == 'fitbit') %>% 
-  dplyr::left_join(pmi.metadata) %>% 
-  dplyr::select(metric, externalId, age, gender, recordId,
-                vo2Max.Milligan1, vo2Max.Milligan2,vo2Max.Shakey,
-                `Measured VO2max (mL/kg/min)`,`Cooper VO2`,inClinic) %>% 
-  na.omit()
+# ## Refine our data to high confidence scores
+# aa.crf <- vo2.estiamtes.tbl %>% 
+#   dplyr::left_join(pmi.metadata) %>% 
+#   dplyr::filter(conf15 > 0.5, conf30 > 0.5, conf60 > 0.5) %>% 
+#   dplyr::select(metric, externalId, age, gender, recordId,
+#                 vo2Max.Milligan1, vo2Max.Milligan2,vo2Max.Shakey,
+#                 `Measured VO2max (mL/kg/min)`,`Cooper VO2`,inClinic)
+# aa.fitbit <- vo2.estiamtes.tbl %>% 
+#   dplyr::filter(recordId %in% aa.crf$recordId,
+#                 metric == 'fitbit') %>% 
+#   dplyr::left_join(pmi.metadata) %>% 
+#   dplyr::select(metric, externalId, age, gender, recordId,
+#                 vo2Max.Milligan1, vo2Max.Milligan2,vo2Max.Shakey,
+#                 `Measured VO2max (mL/kg/min)`,`Cooper VO2`,inClinic) %>% 
+#   na.omit()
 
 # Github link
 gtToken = 'github_token.txt';

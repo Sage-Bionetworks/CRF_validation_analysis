@@ -2,16 +2,16 @@ rm(list = ls())
 gc()
 
 library(tidyverse)
-library(synapseClient)
+library(synapser)
 library(githubr)
-synapseLogin()
+synLogin()
 # source('heartrate_extraction_functions.R')
 
-est.fitz.tbl <- read.csv(synGet('syn18082209')@filePath, header = T, stringsAsFactors = F) %>% 
+est.fitz.tbl <- read.csv(synGet('syn18082209')$path, header = T, stringsAsFactors = F) %>% 
   dplyr::select(-X)
-all.used.ids <- 'syn180882209'
+all.used.ids <- 'syn18082209'
 
-merged.tbl <- read.csv(synGet('syn17973172')@filePath, header = T, stringsAsFactors = F) %>% 
+merged.tbl <- read.csv(synGet('syn17973172')$path, header = T, stringsAsFactors = F) %>% 
   dplyr::select(-X)
 
 all.used.ids <- c(all.used.ids, 'syn17973172')

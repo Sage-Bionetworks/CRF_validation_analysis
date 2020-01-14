@@ -103,11 +103,11 @@ getStartAndStopTime <- function(x, assay){
 # tableId = 'syn11665074'
 # name = 'Cardio 12MT-v5'
 
-# tableId = 'syn11580624'
-# name = 'Cardio Stress Test-v1'
+tableId = 'syn11580624'
+name = 'Cardio Stress Test-v1'
 
-tableId = 'syn11432994'
-name = 'Cardio Stair Step-v1'
+# tableId = 'syn11432994'
+# name = 'Cardio Stair Step-v1'
 
 all.used.ids = tableId
 columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json',
@@ -324,7 +324,7 @@ hr.results <- hr.results %>% dplyr::mutate(
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
 thisFileName <- 'crf_extractHR.R'
-thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
+thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse

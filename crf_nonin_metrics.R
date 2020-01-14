@@ -464,7 +464,7 @@ hr.json.loc = lapply(columnsToDownload, function(col.name){
 })
 
 hr.tbl$rawData <- as.character(hr.tbl$rawData)
-hr.tbl$createdOn <- as.POSIXct(hr.tbl$createdOn/1000, origin = '1970-01-01')
+# hr.tbl$createdOn <- as.POSIXct(hr.tbl$createdOn/1000, origin = '1970-01-01')
 hr.table.meta = data.table::rbindlist(list(hr.tbl %>%
                                              left_join(do.call(cbind, hr.json.loc[1]))),
                                       use.names = T, fill = T)%>%as.data.frame
@@ -527,7 +527,7 @@ phone.hr.metrics.tbl <- hr.table.meta %>%
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
 thisFileName <- 'crf_nonin_metrics.R'
-thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
+thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write Metrics data to Synapse

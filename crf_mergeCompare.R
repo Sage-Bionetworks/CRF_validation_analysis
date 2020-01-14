@@ -27,15 +27,15 @@ synLogin()
 
 ## Download both tables crf and fitbit
 
-# crf.tableId = 'syn12010238'
-# fitbit.tableId = 'syn12550816'
-# polar.tableId = 'syn16811362'
-# name = 'Cardio 12MT-v5'
+crf.tableId = 'syn12010238'
+fitbit.tableId = 'syn12550816'
+polar.tableId = 'syn16811362'
+name = 'Cardio 12MT-v5'
 
-crf.tableId = 'syn12010132'
-fitbit.tableId = 'syn12550818'
-polar.tableId = 'syn16811501'
-name = 'Cardio Stair Step-v1'
+# crf.tableId = 'syn12010132'
+# fitbit.tableId = 'syn12550818'
+# polar.tableId = 'syn16811501'
+# name = 'Cardio Stair Step-v1'
   
 # crf.tableId = 'syn12010237'
 # fitbit.tableId = 'syn12550817'
@@ -141,7 +141,7 @@ all.user.times.common <- crf.user.times %>%
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
 thisFileName <- 'crf_mergeCompare.R'
-thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
+thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse

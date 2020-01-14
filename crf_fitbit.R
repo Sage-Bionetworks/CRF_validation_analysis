@@ -6,7 +6,7 @@
 ########################################################################
 rm(list=ls())
 gc()
-devtools::install_github('itismeghasyam/mhealthtools@develop')
+devtools::install_github('itismeghasyam/mhealthtools@crfAppVersion')
 
 ##############
 # Required libraries
@@ -140,7 +140,7 @@ fitbit.hr.tbl$timestamp <- fitbit.hr.tbl$timestamp - 60*60*as.numeric(fitbit.hr.
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
 thisFileName <- 'crf_fitbit.R'
-thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
+thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse

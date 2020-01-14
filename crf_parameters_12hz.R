@@ -1,7 +1,7 @@
 rm(list=ls())
 gc()
 options(digits.secs = 10)
-devtools::install_github('itismeghasyam/mhealthtools@test')
+devtools::install_github('itismeghasyam/mhealthtools@crfAppVersion')
 # source('getHrFromJson.R')
 
 ##############
@@ -174,7 +174,7 @@ all.equal(a1, io_examples_whole_12) # Check to see no data loss during json conv
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
 thisFileName <- 'crf_parameters_12hz.R'
-thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
+thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write params data to Synapse

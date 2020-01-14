@@ -216,6 +216,26 @@ estimateVo2 <- function(pdat){
                           hr = c(redHRt, greenHRt, blueHRt),
                           conf = c(redHRt.conf,greenHRt.conf,blueHRt.conf))
     
+    # Estimated Heartrate is currently the most confident of 
+    # red and blue channels
+    # Sage-Bionetworks/CardiorespiratoryFitness-iOS/CardiorespiratoryFitness/CardiorespiratoryFitness/iOS/CRFHeartRateSampleProcessor.swift
+    est.crf.dat <- dat.crf %>% 
+      dplyr::filter(metric != 'blue') %>% 
+      na.omit() %>% 
+      dplyr::filter(conf == max(.$conf))
+    
+    estHRt <- tryCatch({mean(est.crf.dat$hr %>% as.numeric())}
+                       ,error = function(e){return(NA)})  
+    estHRt.conf <- tryCatch({mean(est.crf.dat$conf %>% as.numeric())}
+                       ,error = function(e){return(NA)})  
+    
+    est.hr.dat <- data.frame(metric = 'camerahr',
+                             hr = estHRt,
+                             conf = estHRt.conf)
+    
+    dat.crf <- dat.crf %>% 
+      dplyr::full_join(est.hr.dat)
+    
     return(dat.crf)
   }
   
@@ -257,13 +277,17 @@ estimateVo2 <- function(pdat){
                              metric = rep('red', length(seq(15,60))),
                              conf = rep(NA, length(seq(15,60)))) %>% 
       rbind(data.frame(hr = rep(NA, length(seq(15,60))),
-                                  time = seq(15,60),
-                                  metric = rep('green', length(seq(15,60))),
-                                  conf = rep(NA, length(seq(15,60))))) %>% 
+                       time = seq(15,60),
+                       metric = rep('green', length(seq(15,60))),
+                       conf = rep(NA, length(seq(15,60))))) %>% 
       rbind(data.frame(hr = rep(NA, length(seq(15,60))),
-                                  time = seq(15,60),
-                                  metric = rep('blue', length(seq(15,60))),
-                                  conf = rep(NA, length(seq(15,60))))) 
+                       time = seq(15,60),
+                       metric = rep('blue', length(seq(15,60))),
+                       conf = rep(NA, length(seq(15,60))))) %>% 
+      rbind(data.frame(hr = rep(NA, length(seq(15,60))),
+                       time = seq(15,60),
+                       metric = rep('camerahr', length(seq(15,60))),
+                       conf = rep(NA, length(seq(15,60))))) 
   }
   
   # Fitbit heartrate data
@@ -364,9 +388,9 @@ estimateVo2 <- function(pdat){
     #                          conf60 = NA) %>% 
     #   dplyr::mutate(metric = 'polar')
     polar.dat <- data.frame(hr = rep(NA, length(seq(15,60))),
-                             time = seq(15,60),
-                             metric = rep('polar', length(seq(15,60))),
-                             conf = rep(NA, length(seq(15,60))))
+                            time = seq(15,60),
+                            metric = rep('polar', length(seq(15,60))),
+                            conf = rep(NA, length(seq(15,60))))
   }
   
   
@@ -381,12 +405,18 @@ estimateVo2 <- function(pdat){
   #                    .funs = as.numeric)
   
   # print(pdat$recordId)
-  dat1530 <- rbind(hr.crf.dat, fitbit.dat, polar.dat) %>%
+  
+  # Pick the hr values that have conf >= 0.5
+  hr.crf.dat.minconf <- hr.crf.dat %>% 
+    dplyr::filter(conf >= 0.5)
+  
+  
+  dat1530 <- rbind(hr.crf.dat.minconf, fitbit.dat, polar.dat) %>%
     dplyr::filter(time < 31) %>% 
     dplyr::group_by(metric) %>% 
     dplyr::summarise(hb15to30 = 0.25*mean(hr, na.rm = T),
                      conf15 = mean(conf, na.rm = T))
-  dat3060 <- rbind(hr.crf.dat, fitbit.dat, polar.dat) %>%
+  dat3060 <- rbind(hr.crf.dat.minconf, fitbit.dat, polar.dat) %>%
     dplyr::filter(time > 30) %>% 
     dplyr::group_by(metric) %>% 
     dplyr::summarise(hb30to60 = 0.5*mean(hr, na.rm = T),

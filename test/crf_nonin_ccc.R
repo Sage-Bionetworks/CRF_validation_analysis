@@ -1,26 +1,48 @@
+########################################################################
+# CRF Project 
+# Purpose: To test different ways of combining Red, Green and Blue
+#          channel HR values to get an estimated HR value per time window
+# Author: Meghasyam Tummalacherla
+# email: meghasyam@sagebase.org
+########################################################################
 rm(list = ls())
 gc()
 
+##############
+# Required libraries 
+##############
 library(tidyverse)
+library(signal)
+library(mhealthtools)
+# devtools::install_github('itismeghasyam/mhealthtools@crfAppVersion')
 library(synapser)
 library(githubr)
-synLogin()
-# source('heartrate_extraction_functions.R')
+# devtools::install_github("brian-bot/githubr")
 
+##############
+# Data
+##############
+synapser::synLogin()
+
+# Download Data from Synapser
 est.fitz.tbl <- read.csv(synGet('syn18082209')$path, header = T, stringsAsFactors = F) %>% 
   dplyr::select(-X)
 all.used.ids <- 'syn18082209'
 
 merged.tbl <- read.csv(synGet('syn17973172')$path, header = T, stringsAsFactors = F) %>% 
   dplyr::select(-X)
-
 all.used.ids <- c(all.used.ids, 'syn17973172')
+
+# Convert participantID columns into character format
 merged.tbl$participantID <- as.character(merged.tbl$participantID)
-
 est.fitz.tbl$`Participant.ID` <- as.character(est.fitz.tbl$`Participant.ID`)
-aa <- merged.tbl %>% dplyr::left_join(est.fitz.tbl %>%
-                                        dplyr::rename(participantID = `Participant.ID`))
 
+# Merge both dataframes
+aa <- merged.tbl %>%
+  dplyr::left_join(est.fitz.tbl %>%
+                     dplyr::rename(participantID = `Participant.ID`))
+
+# Filter values to those that contain Nonin HR and have a postive confidence
 aa <- aa[!is.na(aa$noninHR),] %>%
   dplyr::filter(method == 'acf',
                 redConf > 0,
@@ -30,10 +52,15 @@ aa <- aa[!is.na(aa$noninHR),] %>%
 total_rows <- nrow(aa)
 total_participant <- length(unique(aa$participantID))
 
+##############
+# Get an estimated HR, which is a composite of Red, Green and Blue channels
+# (Test zone for algorithms for estimated HR)
+##############
+
 aa$window <- as.numeric(gsub('Window','',aa$window))
 aa$estHR <- NA
 
-for(i in seq(nrow(aa))){
+for(i in seq(total_rows)){
   
   hr_vec <- as.numeric(c(aa$redHR[i], aa$greenHR[i], aa$blueHR[i]))
   hr_vec[hr_vec > 240] <- NA
@@ -91,6 +118,7 @@ for(i in seq(nrow(aa))){
   tag_hr <- which.min(abs(diff_vec))
   est_hr <- hr_vec[tag_hr]
   est_conf <- conf_vec[tag_hr]
+
   # tag_non <- which.max(abs(diff_vec))
   # non_considered_hr <- hr_vec[tag_non]
   # non_considered_conf <- conf_vec[tag_non]
@@ -131,15 +159,9 @@ for(i in seq(nrow(aa))){
   # }
 }
 
-
-# aa$estHR <- as.numeric(aa$redHR)
-# aa$estConf <- as.numeric(aa$redConf)
-
-# aa$estHR <- as.numeric(aa$greenHR)
-# aa$estConf <- as.numeric(aa$greenConf)
-
 aa_all <- data.table::copy(aa)
   
+# Further filtering to retain rows that contain finite values of estimated HR
 aa <- aa[!is.infinite(aa$estHR),] %>%
   dplyr::filter(method == 'acf',
                 redConf > 0,
@@ -147,19 +169,20 @@ aa <- aa[!is.infinite(aa$estHR),] %>%
                 blueConf > 0,
                 estConf > 0)
 
+# Add error column based on estimatedHR and NoninHR (pulse ox)
+aa$error <- aa$estHR - as.numeric(aa$noninHR)
+
 percent_retain <- nrow(aa)/total_rows*100
 percent_participant <- 100*length(unique(aa$participantID))/total_participant
 
+# print to see how many records and participants we are retaining
 percent_retain
 percent_participant
 
-aa$error <- aa$estHR - as.numeric(aa$noninHR)
-
-# aa$error <- round(aa$estHR) - as.numeric(aa$noninHR)
-
-bb <- aa %>% dplyr::filter(
-                           phone == 'iPhone 8+')
-
+##############
+# Plots and comparison of estimatedHR and NoninHR (pulse ox)
+##############
+# Summarize error metrics grouped by face fitzpatrick scales (1-6)
 aa_est_face <- aa %>% 
   dplyr::mutate(abs_error = abs(as.numeric(estHR) - as.numeric(noninHR))) %>% 
   dplyr::group_by(face.fitzpatrick, phone) %>% 
@@ -174,7 +197,7 @@ aa_est_face <- aa %>%
 
 # hist(err_mat$avg_err)
 
-## Violin plot of CCC vs Fitzpatrick scale
+# Violin plot of CCC vs Fitzpatrick scale
 library(ggplot2)
 aa_est_face$face.fitzpatrick <- factor(aa_est_face$face.fitzpatrick)
 aa_est_face$phone <- factor(aa_est_face$phone)
@@ -183,7 +206,7 @@ aa_est_face$phone <- factor(aa_est_face$phone)
 # ggplot(aa_est_face, aes(x = phone, y = ccc)) + geom_violin(trim = F) + ylim(c(0,1))
 # ggplot(aa_est_face, aes(x = phone, y = rho)) + geom_violin(trim = F) + ylim(c(0,1))
 
-## heatmap of phone vs face.fitzpatrick, with CCC as the variable
+# heatmap of phone vs face.fitzpatrick, with CCC as the variable
 ggplot(aa_est_face, aes(x = face.fitzpatrick, y= phone)) +
   geom_tile(aes(fill = ccc)) + 
   geom_text(aes(label = round(ccc, 2))) +
@@ -193,16 +216,19 @@ ggplot(aa_est_face, aes(x = face.fitzpatrick, y= phone)) +
 #  geom_tile(aes(fill = rho)) +
 #  geom_text(aes(label = round(rho, 2))) +
 #  scale_fill_gradient(low = "red", high = "green")
-# 
+
 ggplot(aa_est_face, aes(x = face.fitzpatrick, y = phone)) +
  geom_tile(aes(fill = mean_err)) +
  geom_text(aes(label = round(mean_err, 2))) +
  scale_fill_gradient(low = "green", high = "red")
  
+# Concordance score between estimatedHR and NoninHR using Lin's concordance
 DescTools::CCC(aa$estHR, aa$noninHR)$rho.c$est
 mean(abs(aa$error))
 
-
+#######################################
+# Upload Data to Synapse 
+#######################################
 # Github link
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
@@ -216,4 +242,3 @@ obj = File(paste0('merged_crf_nonin_acf_esthr','.csv'),
            name = paste0('merged_crf_nonin_acf_esthr','.csv'), 
            parentId = 'syn12435196')
 obj = synStore(obj, used = all.used.ids, executed = thisFile)
-

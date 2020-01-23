@@ -1,28 +1,45 @@
-#### Code for testing if filter coeffs works
-library(tidyverse)
+########################################################################
+# CRF Project 
+# Purpose: To check if the filter function from R-signal package is the same
+#          as the filter implementation used in the phone app 
+# Author: Meghasyam Tummalacherla
+# email: meghasyam@sagebase.org
+########################################################################
 
-## Data
+##############
+# Required libraries 
+##############
+library(tidyverse)
+library(signal)
+library(mhealthtools)
+# devtools::install_github('itismeghasyam/mhealthtools@crfAppVersion')
+
+##############
+# Data 
+############## 
 hr.data <- mhealthtools::heartrate_data
 sampling_rate_round <- mhealthtools:::get_sampling_rate(hr.data) %>% 
   round()
+x <- hr.data$red[1100:1400]
+plot(x, type = 'l')
 
-## Actual filter co-effs / (same as the filter params in file)
+##############
+# Filter using signal package 
+############## 
+# signal package filter co-effs / (same as the filter params in file)
 bf_low <- signal::butter(7, 5/(sampling_rate_round/2), type = 'low')
 b <- bf_low$b # b = (b1, b2,....., b8)
 a <- bf_low$a # a = (a1, a2,....., a8)
 
-## Sample signal from data
-x <- hr.data$red[1100:1400]
-plot(x, type = 'l')
-
-## Actual filter output
+# signal package filter output
 xf_signal <- signal::filter(bf_low,x)
 
 ########################################################################
-## Our implementation of filter
-## REF: https://www.mathworks.com/help/signal/ug/filter-implementation-and-analysis.html
-##      (Look at Section titled "Filtering with the filter Function")
+# App implementation of filter
 ########################################################################
+# REF: https://www.mathworks.com/help/signal/ug/filter-implementation-and-analysis.html
+#      (Look at Section titled "Filtering with the filter Function")
+
 our_filter <- function(x, b, a){
 
   xl <- length(x)
@@ -56,9 +73,11 @@ our_filter <- function(x, b, a){
   # return output
 }
 
-## Our output
+# Our output
 xf_our<-our_filter(x, b, a)
 plot(xf_our, type = 'l')
 
-## Checking that our implementation matches with the original implementation
+##############
+# Check if app implementation is in-line with the signal::filter implementation
+################ 
 all.equal(as.numeric(xf_our), as.numeric(xf_signal))

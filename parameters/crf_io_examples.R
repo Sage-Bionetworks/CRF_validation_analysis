@@ -21,6 +21,12 @@ library(mhealthtools)
 synapser::synLogin()
 
 ##############
+# Global parameters
+##############
+min_hr <- 45
+max_hr <- 210
+
+##############
 # Required functions 
 ##############
 getMeanFilterOrder <- function(sampling_rate){
@@ -248,7 +254,7 @@ mhealthtools:::get_sampling_rate(hr.data)
 io_examples_whole_12hz <- getIOExamplesHRData(hr.data = hr.data)
 
 # Store the input output examples as a JSON
-jsonlite::toJSON(io_examples_whole_12, digits = 10) %>% 
+jsonlite::toJSON(io_examples_whole_12hz, digits = 10) %>% 
   write_lines('io_examples_whole_12hz.json')
 a1 <- jsonlite::fromJSON('io_examples_whole_12hz.json')
 all.equal(a1, io_examples_whole_12) # Check to see no data loss during json conversion

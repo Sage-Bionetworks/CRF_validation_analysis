@@ -81,7 +81,7 @@ mean_centering_filter_params <- lapply(sampling_rates, getMeanFilterOrder) %>%
 # Github link
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
-thisFileName <- 'crf_filter_parameters.R'
+thisFileName <- 'parameters/crf_filter_parameters.R'
 thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='sagebio_master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 

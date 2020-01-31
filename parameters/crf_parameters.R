@@ -8,6 +8,7 @@
 rm(list=ls())
 gc()
 options(digits.secs = 10)
+
 ##############
 # Required libraries 
 ##############
@@ -71,6 +72,8 @@ getACF <- function(x, max_lag){
   x[is.na(x)] <- 0
   return(stats::acf(x, lag.max = max_lag, plot = F)$acf)
 }
+
+
 ##############
 # Calculate the filter parameters for various integer values of sampling rates
 ##############

@@ -67,9 +67,10 @@ for (i in seq(nrow(ref.details))){
   # Get ref table from Synapse
   ref.tbl.syn <- synTableQuery(paste('select * from', ref.tableId))
   ref.tbl <- ref.tbl.syn$asDataFrame()
-  ref.tbl$createdOn <- as.POSIXct(ref.tbl$createdOn/1000, origin = '1970-01-01')
-  ref.tbl <- ref.tbl %>% dplyr::select(recordId, healthCode, createdOn, createdOnTimeZone) %>% 
-    dplyr::mutate(createdDate = as.character(as.Date.character(createdOn))) %>% unique()
+  ref.tbl <- ref.tbl %>%
+    dplyr::select(recordId, healthCode, createdOn, createdOnTimeZone) %>% 
+    dplyr::mutate(createdDate = as.character(as.Date.character(createdOn))) %>%
+    unique()
   
   all.used.ids = c(tableId,ref.tableId) # provenance tracking
   

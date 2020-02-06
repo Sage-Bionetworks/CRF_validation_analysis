@@ -142,5 +142,5 @@ for(i in seq(nrow(ref.details))){
   obj = File(paste0('polar ', ref.name, '.csv'), 
              name = paste0('polar', ref.name, '.csv'), 
              parentId = 'syn16805789')
-  obj = synStore(obj,  used = c(all.used.ids, executed = thisFile))
+  obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 }

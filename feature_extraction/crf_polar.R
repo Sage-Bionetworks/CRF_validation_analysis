@@ -4,6 +4,7 @@
 # Author: Meghasyam Tummalacherla
 # email: meghasyam@sagebase.org
 ########################################################################
+# Assuming that the working directory is ~/.../CRF_validation_analysis/
 rm(list=ls())
 gc()
 devtools::install_github('itismeghasyam/mhealthtools@crfAppVersion')
@@ -132,7 +133,7 @@ for(i in seq(nrow(ref.details))){
   # Github link
   gtToken = 'github_token.txt';
   githubr::setGithubToken(as.character(read.table(gtToken)$V1))
-  thisFileName <- 'crf_polar.R'
+  thisFileName <- 'feature_extraction/crf_polar.R'
   thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='sagebio_master')
   thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
   

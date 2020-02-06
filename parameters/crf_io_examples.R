@@ -5,6 +5,7 @@
 # Author: Meghasyam Tummalacherla
 # email: meghasyam@sagebase.org
 ########################################################################
+# Assuming that the working directory is ~/.../CRF_validation_analysis/
 rm(list=ls())
 gc()
 options(digits.secs = 10)

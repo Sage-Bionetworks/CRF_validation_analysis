@@ -17,6 +17,7 @@ library(synapser)
 library(githubr)
 library(plyr)
 library(dplyr)
+library(stringr)
 library(jsonlite)
 
 synLogin()
@@ -33,18 +34,27 @@ polar.files <- unzip(polar.syn$path)
 polar_data <- NULL
 
 for(file.i in polar.files){
+  
+  # For externalId
+  a0 <- stringr::str_split(file.i, '/') %>% 
+    unlist()
+  a0 <- a0[length(a0)]
+  current_external_id <- substring(a0, 1,6)
+  
+  # For time and HR
   a1 <- read.csv(file.i, skip = 2) %>% 
     dplyr::select('Time', 'HR..bpm.') %>% 
     dplyr::rename('time' = 'Time',
                   'hr' = 'HR..bpm.')
   
+  # For other values in the polar data
   a2 <- read.csv(file.i, nrows = 1) %>% 
     dplyr::select('Sport', 'Date', 'Start.time', 'Duration') %>% 
     dplyr::select('sport' = 'Sport',
                   'date' = 'Date',
                   'start.time' = 'Start.time',
                   'duration' = 'Duration') %>% 
-    dplyr::mutate(externalId = substring(file.i,1,6))
+    dplyr::mutate(externalId = current_external_id)
   polar_data <- rbind(polar_data, cbind(a1,a2)) 
 }
 

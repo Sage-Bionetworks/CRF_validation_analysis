@@ -27,7 +27,7 @@ synLogin()
 tableId = 'syn11673533'
 name = 'HeartRate activities heart intraday'
 
-all.used.ids = tableId
+all.used.ids = tableId # provenance tracking
 columnsToSelect = c('healthCode','createdDate','dataset','datasetInterval','datasetType')
 columnsToDownload = c('dataset')
 
@@ -117,7 +117,7 @@ for (i in seq(nrow(ref.details))){
     dplyr::inner_join(hc.timezone.tbl.multTimeZone) %>%
     unique()
   
-  # Get merged common table for all healthCodes\
+  # Get merged common table for all healthCodes
   fitbit.common.ref <- rbind(fitbit.common.ref.monoTimeZone,
                              fitbit.common.ref.multTimeZone)
   
@@ -144,7 +144,7 @@ for (i in seq(nrow(ref.details))){
   gtToken = 'github_token.txt';
   githubr::setGithubToken(as.character(read.table(gtToken)$V1))
   thisFileName <- 'crf_fitbit.R'
-  thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
+  thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='sagebio_master')
   thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
   
   # Write to Synapse

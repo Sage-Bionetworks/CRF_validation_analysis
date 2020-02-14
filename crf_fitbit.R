@@ -54,7 +54,6 @@ columnsToSelect = c('healthCode','createdDate','dataset','datasetInterval','data
 columnsToDownload = c('dataset')
 
 fitbit.tbl = synTableQuery(paste('select * from', tableId))
-
 fitbit.tbl@values = fitbit.tbl@values %>% dplyr::select(columnsToSelect)  
 
 fitbit.json.loc = lapply(columnsToDownload, function(col.name){
@@ -68,7 +67,7 @@ fitbit.table.meta = data.table::rbindlist(list(fitbit.tbl@values %>%
                                              left_join(do.call(cbind, fitbit.json.loc))),
                                       use.names = T, fill = T)%>%as.data.frame
 
-fitbit.common.ref <- fitbit.table.meta %>% dplyr::inner_join(ref.tbl)
+fitbit.common.ref<- fitbit.table.meta %>% dplyr::inner_join(ref.tbl)
 
 fitbit.hr.tbl <- apply(fitbit.common.ref,1,function(x){ 
   tryCatch({dat <- jsonlite::fromJSON(as.character(x['dataset.fileLocation']))

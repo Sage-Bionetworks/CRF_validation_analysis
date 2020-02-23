@@ -7,29 +7,24 @@
 rm(list=ls())
 gc()
 devtools::install_github('itismeghasyam/mhealthtools@crfAppVersion')
-# source('getHrFromJson.R')
 
 ##############
 # Required libraries
 ##############
+library(jsonlite)
+library(mhealthtools)
+library(synapser)
+library(githubr)
 library(data.table)
 library(tidyr)
 library(plyr)
 library(dplyr)
-library(seewave)
-library(mhealthtools) 
-library(synapser)
-library(githubr)
-library(ggplot2)
-library(parsedate)
-library(lubridate)
 
 synLogin()
 
 #############
 # Required functions
 #############
-
 getTimeZone = function(time, tag){
   last = substring(time, nchar(time), nchar(time));
   if(last == 'Z'){
@@ -47,11 +42,11 @@ getTimeZone = function(time, tag){
     }
     
     if(signt == '-'){
-    return(timezone = hours + mins/60);
+      return(timezone = hours + mins/60);
     }else{
-    return(timezone = -(hours + mins/60));
+      return(timezone = -(hours + mins/60));
     }
-    }
+  }
 }
 
 getStartAndStopTime <- function(x, assay){
@@ -132,20 +127,14 @@ hr.json.loc = lapply(columnsToDownload, function(col.name){
 })
 
 hr.table.meta = data.table::rbindlist(list(hr.tbl %>%
-                                            left_join(do.call(cbind, hr.json.loc[1]))),
-                                     use.names = T, fill = T)%>%as.data.frame
- 
-hr.table.meta = data.table::rbindlist(list(hr.table.meta %>%
-                                             left_join(do.call(cbind, hr.json.loc[2]))),
-                                      use.names = T, fill = T) %>% as.data.frame()
+                                             left_join(do.call(cbind, hr.json.loc[1]))),
+                                      use.names = T, fill = T)%>%as.data.frame
 
-hr.table.meta = data.table::rbindlist(list(hr.table.meta %>%
-                                             left_join(do.call(cbind, hr.json.loc[3]))),
-                                      use.names = T, fill = T) %>% as.data.frame()
-
-hr.table.meta = data.table::rbindlist(list(hr.table.meta %>%
-                                             left_join(do.call(cbind, hr.json.loc[4]))),
-                                      use.names = T, fill = T) %>% as.data.frame()
+for(i in 2:length(columnsToDownload)){
+  hr.table.meta = data.table::rbindlist(list(hr.table.meta %>%
+                                               left_join(do.call(cbind, hr.json.loc[i]))),
+                                        use.names = T, fill = T) %>% as.data.frame()
+}
 
 # Subset to PMI Ids
 hr.table.meta <- hr.table.meta[grep('PMI', hr.table.meta$externalId),]
@@ -155,17 +144,22 @@ hr.table.meta$originalTable = rep(tableId, nrow(hr.table.meta))
 #############
 # Extract start and stop time for each row
 #############
-
 hr.before.times <- apply(hr.table.meta,1,function(x){ 
   tryCatch({getStartAndStopTime(x,'before')},
            error = function(e){ NA })
-}) %>% plyr::ldply(data.frame) %>% dplyr::rename('recordId' = '.id') %>% dplyr::select(recordId, startTime, stopTime, tag) %>% 
+}) %>%
+  plyr::ldply(data.frame) %>% 
+  dplyr::rename('recordId' = '.id') %>% 
+  dplyr::select(recordId, startTime, stopTime, tag) %>% 
   dplyr::mutate(Assay = 'before')
 
 hr.after.times <- apply(hr.table.meta,1,function(x){ 
   tryCatch({getStartAndStopTime(x, 'after')},
            error = function(e){ NA })
-}) %>% plyr::ldply(data.frame) %>% dplyr::rename('recordId' = '.id') %>% dplyr::select(recordId, startTime, stopTime, tag) %>% 
+}) %>%
+  plyr::ldply(data.frame) %>% 
+  dplyr::rename('recordId' = '.id') %>% 
+  dplyr::select(recordId, startTime, stopTime, tag) %>% 
   dplyr::mutate(Assay = 'after')
 
 hr.times <- rbind(hr.before.times, hr.after.times)
@@ -173,146 +167,108 @@ hr.times <- rbind(hr.before.times, hr.after.times)
 #############
 # Extract HR for each row
 #############
+# Before
+hr.table.meta.noNA.before <- hr.table.meta[!(is.na(hr.table.meta$heartRate_before_recorder.fileLocation)),]
+hr.before = apply(hr.table.meta.noNA.before,1,function(x){ 
+  temp.dat <- tryCatch({
+    jsonlite::fromJSON(as.character(x['heartRate_before_recorder.fileLocation'])) %>% 
+      dplyr::mutate(t = timestamp) %>% 
+      mhealthtools::get_heartrate() %>% 
+      as.data.frame() %>% 
+      dplyr::mutate(recordId = as.character(x['recordId'][[1]]),
+                    Assay = 'before')
+    # Window length is 15s (10s post filtering)
+    # Window overlap is such that each consecutive window is 1s away
+  },
+  error = function(e){ 
+    NULL
+  })
+  
+  if(ncol(temp.dat) < 10){ 
+    # the check for 10 columns because of expected no. of
+    # columns from previous output after mhealthtools and
+    # dplyr mutate
+    temp.dat <- temp.dat %>%
+      dplyr::select(-red, -green, -blue) %>%
+      dplyr::mutate(
+        red.hr = NA,
+        red.confidence = NA,
+        green.hr = NA,
+        green.confidence = NA,
+        blue.hr = NA,
+        blue.confidence = NA)
+  }
+  
+  window  <- nrow(temp.dat)
+  temp.dat$window <- paste0('Window',1:window)
+  
+  return(temp.dat)
+  
+}) %>% data.table::rbindlist(fill = T)
 
-# Remove rows that do not have a file, i.e NA value (because the participant has not completed the task)
-# hr.table.meta = hr.table.meta[complete.cases(hr.table.meta[,paste0(columnsToDownload)]),]
-
-# Extract HR for each row for before cardio 12MT, and merge all results into a list
-## If using different table please check the corresponding column name and update accordingly below
-
-
-hr.before = apply(hr.table.meta,1,function(x){ 
-                tryCatch({
-                  jsonlite::fromJSON(as.character(x['heartRate_before_recorder.fileLocation'])) %>% 
-                    dplyr::mutate(t = timestamp) %>% 
-                    mhealthtools::get_heartrate(window_overlap = 0.9)
-                  },
-                         error = function(e){ NA })
-              }) 
-
-hr.after = apply(hr.table.meta,1,function(x){ 
-  tryCatch({
+# After
+hr.table.meta.noNA.after <- hr.table.meta[!(is.na(hr.table.meta$heartRate_after_recorder.fileLocation)),]
+hr.after = apply(hr.table.meta.noNA.after,1,function(x){ 
+  temp.dat <- tryCatch({
     jsonlite::fromJSON(as.character(x['heartRate_after_recorder.fileLocation'])) %>% 
       dplyr::mutate(t = timestamp) %>% 
-      mhealthtools::get_heartrate(window_overlap = 0.9)
-    },
-           error = function(e){ NA })
-}) 
-
-# reshaping data
-hr.before.table = lapply(hr.before, function(ele){
-  temp = list()
-  temp$error <- tryCatch({unlist(ele$error)}, error = function(e){ NA })
-  temp$samplingRate <- tryCatch({unlist(ele$sampling_rate)}, error = function(e){ NA })
-  temp$redHR <-   tryCatch({unlist(ele$red$hr)}, error = function(e){ NA })
-  temp$redConf <- tryCatch({unlist(ele$red$confidence)}, error = function(e){ NA })
-  temp$greenHR <- tryCatch({unlist(ele$green$hr)}, error = function(e){ NA })
-  temp$greenConf <- tryCatch({unlist(ele$green$confidence)}, error = function(e){ NA })
-  temp$blueHR <- tryCatch({unlist(ele$blue$hr)}, error = function(e){ NA })
-  temp$blueConf <- tryCatch({unlist(ele$blue$confidence)}, error = function(e){ NA })
-  return(temp)
-})
-
-
-hr.after.table = lapply(hr.after, function(ele){
-  temp = list()
-  temp$error <- tryCatch({unlist(ele$error)}, error = function(e){ NA })
-  temp$samplingRate <- tryCatch({unlist(ele$sampling_rate)}, error = function(e){ NA })
-  temp$redHR <-   tryCatch({unlist(ele$red$hr)}, error = function(e){ NA })
-  temp$redConf <- tryCatch({unlist(ele$red$confidence)}, error = function(e){ NA })
-  temp$greenHR <- tryCatch({unlist(ele$green$hr)}, error = function(e){ NA })
-  temp$greenConf <- tryCatch({unlist(ele$green$confidence)}, error = function(e){ NA })
-  temp$blueHR <- tryCatch({unlist(ele$blue$hr)}, error = function(e){ NA })
-  temp$blueConf <- tryCatch({unlist(ele$blue$confidence)}, error = function(e){ NA })
-  return(temp)
-})
-
-############
-# !!!! FIND RED FLAGS: RECORDS WITH FAILED HR EXTRACTIONS
-############
-hr.table.meta <- hr.table.meta %>% dplyr::select(-heartRate_before_recorder.fileLocation,
-                                                 -heartRate_after_recorder.fileLocation,
-                                                 -heartRate_before_recorder.json,
-                                                 -heartRate_after_recorder.json,
-                                                 -heartRate_before_motion.fileLocation,
-                                                 -heartRate_after_motion.fileLocation,
-                                                 -heartRate_before_motion.json,
-                                                 -heartRate_after_motion.json)
-# Single out the records for which the extraction has produced any error.
-a.before <- vector()
-for (i in 1:length(hr.before)){
-  if(all(is.na(hr.before[[i]]))){
-    a.before <- c(a.before,i)
-  }else{
-    if(!hr.before[[i]]$error == 'none'){a.before <- c(a.before,i)}
+      mhealthtools::get_heartrate() %>% 
+      as.data.frame() %>% 
+      dplyr::mutate(recordId = as.character(x['recordId'][[1]]),
+                    Assay = 'after')
+    # Window length is 15s (10s post filtering)
+    # Window overlap is such that each consecutive window is 1s away
+  },
+  error = function(e){ 
+    NULL
+  })
+  
+  if(ncol(temp.dat) < 10){
+    # the check for 10 columns because of expected no. of
+    # columns from previous output after mhealthtools and
+    # dplyr mutate
+    temp.dat <- temp.dat %>%
+      dplyr::select(-red, -green, -blue) %>%
+      dplyr::mutate(
+        red.hr = NA,
+        red.confidence = NA,
+        green.hr = NA,
+        green.confidence = NA,
+        blue.hr = NA,
+        blue.confidence = NA)
   }
-}
+  
+  window  <- nrow(temp.dat)
+  temp.dat$window <- paste0('Window',1:window)
+  
+  return(temp.dat)
+  
+}) %>% data.table::rbindlist(fill = T)
 
-a.after <- vector()
-for (i in 1:length(hr.after)){
-  if(all(is.na(hr.after[[i]]))){
-    a.after <- c(a.after,i)
-  }else{
-    if(!hr.after[[i]]$error == 'none'){a.after <- c(a.after,i)}
-  }
-}
-
-a <- unique(c(a.after,a.before))
-
-# Subset the failed records and their details(columnsToSelect)
-#Note: These include low sampling rate errors too, crosscheck with the hr.table.meta
-# to find out more, and look at hr.before to see the results
-hr.error.records = hr.table.meta[a,]
-hr.before.error = hr.before[names(hr.before) %in% hr.error.records$recordId]
-hr.after.error = hr.after[names(hr.after) %in% hr.error.records$recordId]
-
-# Put hr.after and hr.before in dataframes so that exporting to tsv/csv is easier
-hr.after.table <- data.frame(t(data.table::rbindlist(list(hr.after.table)) %>% as.data.frame))
-hr.after.table$recordId <- rownames(hr.after.table)
-hr.after.table$Assay <- rep('after', nrow(hr.after.table))
-colnames(hr.after.table) <- c('error','samplingRate','redHR','redConf','greenHR','greenConf','blueHR','blueConf','recordId','Assay')
-hr.after.table <- merge( hr.table.meta,hr.after.table, by='recordId')
-
-hr.before.table <- data.frame(t(data.table::rbindlist(list(hr.before.table)) %>% as.data.frame))
-hr.before.table$recordId <- rownames(hr.before.table)
-hr.before.table$Assay <- rep('before', nrow(hr.before.table))
-colnames(hr.before.table) <- c('error','samplingRate','redHR','redConf','greenHR','greenConf','blueHR','blueConf','recordId','Assay')
-hr.before.table <- merge( hr.table.meta,hr.before.table, by='recordId')
-
-# Expand each HR reading for each record(row) into a seperate row for each window
-aa <- apply(hr.before.table,1,function(rown){
-  window  <- max(length(rown$redHR), length(rown$greenHR), length(rown$blueHR))
-  temp <- data.frame(rown,window)
-  temp$window <- paste0('Window',1:window)
-  temp$redHR <- as.numeric(rown$redHR)
-  temp$greenHR <- as.numeric(rown$greenHR)
-  temp$blueHR <- as.numeric(rown$blueHR)
-  temp$redConf <- as.numeric(rown$redConf)
-  temp$greenConf <- as.numeric(rown$greenConf)
-  temp$blueConf <- as.numeric(rown$blueConf)
-  temp$createdOn <- rep(hr.before.table[hr.before.table$recordId == temp$recordId[1],]$createdOn, window)
-  return(temp)
-}) %>% cbind %>% ldply(data.frame)
-hr.before.table <- copy(aa)
-rm(aa)
-
-aa <- apply(hr.after.table,1,function(rown){
-  window  <- max(length(rown$redHR), length(rown$greenHR), length(rown$blueHR))
-  temp <- data.frame(rown,window)
-  temp$window <- paste0('Window',1:window)
-  temp$redHR <- as.numeric(rown$redHR)
-  temp$greenHR <- as.numeric(rown$greenHR)
-  temp$blueHR <- as.numeric(rown$blueHR)
-  temp$redConf <- as.numeric(rown$redConf)
-  temp$greenConf <- as.numeric(rown$greenConf)
-  temp$blueConf <- as.numeric(rown$blueConf)
-  temp$createdOn <- rep(hr.after.table[hr.after.table$recordId == temp$recordId[1],]$createdOn, window)
-  return(temp)
-}) %>% cbind %>% ldply(data.frame)
-hr.after.table <- copy(aa)
-rm(aa)
-
-hr.results <- rbind(hr.after.table, hr.before.table) %>% dplyr::left_join(hr.times)
+# Merge the before and after results and select needed columns
+hr.results <- rbind(hr.before, hr.after) %>% 
+  dplyr::left_join(hr.times) %>% 
+  dplyr::left_join(hr.table.meta) %>% 
+  dplyr::select(recordId,
+                healthCode,
+                externalId,
+                dataGroups,
+                metadata.startDate,
+                metadata.endDate,
+                originalTable,
+                error,
+                samplingRate = sampling_rate,
+                redHR = red.hr,
+                redConf = red.confidence,
+                greenHR = green.hr,
+                greenConf = green.confidence,
+                blueHR = blue.hr,
+                blueConf = blue.confidence,
+                Assay,
+                window,
+                startTime,
+                stopTime,
+                tag)
 
 # Change start and stop time to reflect start and stop time of each window, not record
 hr.results <- hr.results %>% dplyr::mutate(
@@ -320,11 +276,14 @@ hr.results <- hr.results %>% dplyr::mutate(
     (10)*(1-0.9)*(as.numeric(gsub('Window','',window))-1)) %>% 
   dplyr::mutate(stopTime = startTime+10)
 
+#############
+# Upload to Synapse
+#############
 # Github link
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
 thisFileName <- 'crf_extractHR.R'
-thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
+thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse

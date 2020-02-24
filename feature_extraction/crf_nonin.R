@@ -456,8 +456,8 @@ est.fitz.tbl$finger.fitzpatrick <- lapply(est.fitz.tbl$finger.fitzpatrick.ita, d
 # Github link
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
-thisFileName <- 'crf_nonin.R'
-thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='sagebio_master')
+thisFileName <- 'feature_extraction/crf_nonin.R'
+thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='sagebio_master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write Nonin data to Synapse

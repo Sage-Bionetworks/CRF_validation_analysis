@@ -95,7 +95,7 @@ getStartAndStopTime <- function(x, assay){
 #############
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #############
-# SynIds and names of reference tables for createdtimes
+# SynIds and names of reference tables
 ref.details <- data.frame(tableId = c('syn11665074',
                                       'syn11580624',
                                       'syn11432994'),

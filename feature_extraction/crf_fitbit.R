@@ -50,7 +50,7 @@ fitbit.table.meta = data.table::rbindlist(list(fitbit.tbl %>%
   as.data.frame %>%
   dplyr::rename('fitbitCreatedDate' = 'createdDate')
 
-# SynIds and names of reference tables for createdtimes
+# SynIds and names of reference tables 
 ref.details <- data.frame(tableId = c('syn11665074',
                                       'syn11580624',
                                       'syn11432994'),

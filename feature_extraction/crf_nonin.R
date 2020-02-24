@@ -1,14 +1,18 @@
 ########################################################################
 # CRF Project 
-# Purpose: To extract and integrate CRF Nonin data (Done at UCSD)
+# Purpose: Analysis on UCSD Validation Study
+#          - Extract HR values for phone data
+#          - Extract nonin data
+#          - Merge phone hr and nonin hr data
+#          - Estimate Fitz-Patrick value based on Spectrocolorimeter values
 # Author: Meghasyam Tummalacherla
 # email: meghasyam@sagebase.org
 ########################################################################
 rm(list=ls())
 gc()
-# devtools::install_github("Sage-Bionetworks/mhealthtools")
 devtools::install_github("itismeghasyam/mhealthtools@crfAppVersion")
-source('noninRead.R')
+source('feature_extraction/noninRead.R') 
+# It is assumed that your working directory is ~/.../CRF_validation_analysis/
 options(digits.secs = 6)
 # to get the millisecond resolution
 
@@ -26,6 +30,7 @@ library(githubr)
 library(ggplot2)
 library(parsedate)
 library(lubridate)
+library(jsonlite)
 synLogin()
 
 ##############
@@ -74,9 +79,7 @@ getStartAndStopTime <- function(dat, tag_ = 'iPhone'){
   # Column containing time (with respect to the reference point) is timestamp
   
   if('timestampDate' %in% names(dat)){
-    startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%OS') - 
-      # 60*60*getTimeZone(dat$timestampDate[1],tag = tag_)
-      0
+    startTime <- strptime(dat$timestampDate[1], format = '%Y-%m-%dT%H:%M:%OS') - 60*60*getTimeZone(dat$timestampDate[1],tag = tag_)
     stopTime <- startTime + (dat$timestamp[length(dat$timestamp)]-min(dat$timestamp, na.rm = T))
   }else{
     startTime <- as.POSIXct(dat$timestamp[1], origin = '1970-01-01')
@@ -168,6 +171,7 @@ deMystifyPhone <- function(phone_string){
   return(phone)
 }
 
+# Convert ITA into Fitz-Patrick values
 deMystifyITA <- function(ITA){
   ITA <- as.numeric(ITA)
   de.ita <- NA
@@ -196,17 +200,16 @@ deMystifyITA <- function(ITA){
 #######################################
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #######################################
-######
 ## CRF Validation Data (Nonin and the SpectroColorimeter readings) filepaths
-######
+
 crf.tableId = 'syn17009128'
 name = 'CRF_HR_validation_questions'
 
-all.used.ids = crf.tableId
+all.used.ids = crf.tableId # provenance tracking
 columnsToDownload = c('iPhone SE Nonin File','iPhone 8+ Nonin file','iPhone XS Nonin File',
                       'Samsung Galaxy J7 Nonin File','Moto G6 Play Nonin File',
                       'Huawei Mate SE Nonin File','LG Stylo 4 Nonin File',
-                      'Samsung Galaxy S9+ Nonin File') # For Cardio 12MT
+                      'Samsung Galaxy S9+ Nonin File') 
 crf.validation.tbl.syn = synTableQuery(paste('select * from', crf.tableId))
 crf.validation.tbl <- crf.validation.tbl.syn$asDataFrame() %>%
   dplyr::filter(`Participant ID` > 1200)
@@ -227,10 +230,6 @@ crf.validation.tbl$`Huawei Mate SE Nonin File` <- as.character(crf.validation.tb
 crf.validation.tbl$`LG Stylo 4 Nonin File` <- as.character(crf.validation.tbl$`LG Stylo 4 Nonin File`)
 crf.validation.tbl$`Moto G6 Play Nonin File` <- as.character(crf.validation.tbl$`Moto G6 Play Nonin File`)
 
-
-
-
-
 crf.validation.table.meta = data.table::rbindlist(list(crf.validation.tbl %>%
                                                          left_join(do.call(cbind, nonin.json.loc[1]))),
                                                   use.names = T, fill = T)%>%as.data.frame
@@ -241,9 +240,8 @@ for(i in seq(2,length(columnsToDownload))){
                                                     use.names = T, fill = T) %>% as.data.frame()
 }
 
-######
 ## Phone Camera Json data filepaths
-######
+
 phone.tableId = 'syn17007713'
 name = 'HeartRate Measurement-v8'
 
@@ -291,6 +289,7 @@ crf.validation.table.meta <- crf.validation.table.meta %>%
 # there is no way we can get confused because they will be using only one phone
 # at any given instant. So if we have Nonin data indexed by timestamp and participantID
 # it should suffice.
+
 nonin.hr.tbl <- apply(crf.validation.table.meta,1,function(x){ 
   tryCatch(
     {
@@ -326,8 +325,8 @@ nonin.hr.tbl <- apply(crf.validation.table.meta,1,function(x){
         unique() %>% 
         dplyr::mutate(participantID = x['Participant ID'],
                       createdDate = as.character(x['createdOnDate']),
-                      # createdOnTimeZone = x['createdOnTimeZone']
-                      createdOnTimeZone = '0'
+                      createdOnTimeZone = x['createdOnTimeZone']
+                      # createdOnTimeZone = '0'
         ) %>% 
         dplyr::select(TIMESTAMP, HR.D, phone, participantID,
                       createdDate, createdOnTimeZone) %>% 
@@ -355,6 +354,7 @@ nonin.hr.tbl <- apply(crf.validation.table.meta,1,function(x){
 ######
 ## Extract heartrate for each participant for each phone and collate into one file
 ######
+
 phone.hr.tbl <- apply(hr.table.meta,1,function(x){
   tryCatch({
     hr.json.fileLocation <- tryCatch({
@@ -431,6 +431,7 @@ merged.tbl$noninTimestamp <- as.POSIXct(as.numeric(merged.tbl$noninTimestamp), o
 merged.tbl$startTime <- strptime(merged.tbl$startTime, format = '%Y-%m-%d %H:%M:%OS',tz='') %>% as.POSIXct()
 merged.tbl$stopTime <- strptime(merged.tbl$stopTime, format = '%Y-%m-%d %H:%M:%OS',tz='') %>% as.POSIXct()
 options(digits.secs = 3) # reset the seconds digit resolution
+
 #######################################
 # Calculate a table of estimated Fitzpatrick scales from Spectrocolorimeter values 
 #######################################
@@ -448,8 +449,9 @@ est.fitz.tbl$face.fitzpatrick <- lapply(est.fitz.tbl$face.fitzpatrick.ita, deMys
   unlist()
 est.fitz.tbl$finger.fitzpatrick <- lapply(est.fitz.tbl$finger.fitzpatrick.ita, deMystifyITA) %>% 
   unlist()
+
 #######################################
-# Upload Data to Synapse 
+# Upload Data to Synapse
 #######################################
 # Github link
 gtToken = 'github_token.txt';
@@ -460,29 +462,29 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write Nonin data to Synapse
 write.csv(nonin.hr.tbl,file = paste0('nonin','.csv'),na="")
-obj = File(paste0('nonin','.csv'), 
-           name = paste0('nonin','.csv'), 
+obj = File(paste0('nonin','.csv'),
+           name = paste0('nonin','.csv'),
            parentId = 'syn11968320')
 obj = synStore(obj,  used = crf.tableId, executed = thisFile)
 
 # Write Phone data to Synapse
 write.csv(phone.hr.tbl,file = paste0('crf_phone','.csv'),na="")
-obj = File(paste0('crf_phone','.csv'), 
-           name = paste0('crf_phone','.csv'), 
+obj = File(paste0('crf_phone','.csv'),
+           name = paste0('crf_phone','.csv'),
            parentId = 'syn11968320')
 obj = synStore(obj,  used = phone.tableId, executed = thisFile)
 
 # Write Merged data to Synapse
 write.csv(merged.tbl,file = paste0('merged_crf_nonin','.csv'),na="")
-obj = File(paste0('merged_crf_nonin','.csv'), 
-           name = paste0('merged_crf_nonin','.csv'), 
+obj = File(paste0('merged_crf_nonin','.csv'),
+           name = paste0('merged_crf_nonin','.csv'),
            parentId = 'syn12435196')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 
 # Write Estimated FitzPatrick scales to Synapse
 write.csv(est.fitz.tbl,file = paste0('est_fitzpatrick','.csv'),na="")
-obj = File(paste0('est_fitzpatrick','.csv'), 
-           name = paste0('est_fitzpatrick','.csv'), 
+obj = File(paste0('est_fitzpatrick','.csv'),
+           name = paste0('est_fitzpatrick','.csv'),
            parentId = 'syn12435196')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 

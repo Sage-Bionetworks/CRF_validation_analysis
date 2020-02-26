@@ -6,8 +6,7 @@
 ########################################################################
 rm(list=ls())
 gc()
-# devtools::install_github("Sage-Bionetworks/mhealthtools")
-devtools::install_github("itismeghasyam/mhealthtools@develop")
+devtools::install_github("itismeghasyam/mhealthtools@crfAppVersion")
 options(digits.secs = 6)
 # to get the millisecond resolution
 
@@ -383,19 +382,6 @@ merged.tbl <- read.csv(synGet('syn17973172')$path, header = T, stringsAsFactors 
 merged.tbl$participantID <- as.character(merged.tbl$participantID)
 
 est.fitz.tbl$`Participant.ID` <- as.character(est.fitz.tbl$`Participant.ID`)
-# phone.hr.metrics.tbl <- phone.hr.metrics.tbl %>% 
-#   dplyr::left_join(est.fitz.tbl %>% 
-#                      dplyr::rename(participantID = Participant.ID)) %>% 
-#   na.omit()
-# 
-# red.tbl <- phone.hr.metrics.tbl %>% 
-#   dplyr::filter(channel == 'red')
-# green.tbl <- phone.hr.metrics.tbl %>% 
-#   dplyr::filter(channel == 'green')
-# blue.tbl <- phone.hr.metrics.tbl %>% 
-#   dplyr::filter(channel == 'blue')
-
-
 
 #######################################
 # Download Synapse Table, and select and download required columns, figure out filepath locations
@@ -526,8 +512,8 @@ phone.hr.metrics.tbl <- hr.table.meta %>%
 # Github link
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
-thisFileName <- 'crf_nonin_metrics.R'
-thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
+thisFileName <- 'analysis/crf_nonin_metrics.R'
+thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='sagebio_master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write Metrics data to Synapse

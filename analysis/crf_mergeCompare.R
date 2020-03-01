@@ -25,6 +25,9 @@ synLogin()
 ref.details <- data.frame(crf_tableId = c('syn12010238',
                                           'syn12010132',
                                           'syn12010237'),
+                          main_tableId = c('syn11665074',
+                                           'syn11432994',
+                                           'syn11580624'),
                           fitbit_tableId = c('syn12550816',
                                              'syn12550818',
                                              'syn12550817'),
@@ -40,15 +43,25 @@ for(i in 1:nrow(ref.details)){
   
   # SynIds of the required tables
   crf.tableId = ref.details$crf_tableId[i]
+  main.tableId = ref.details$main_tableId[i]
   fitbit.tableId = ref.details$fitbit_tableId[i]
   polar.tableId = ref.details$polar_tableId[i]
   name = ref.details$name[i]
   
   # Download the tables from synapse
   crf.tbl <- read.csv(synapser::synGet(crf.tableId)$path) %>% dplyr::select(-X)
+  main.tbl <- synapser::synTableQuery(paste('select * from', main.tableId)) %>% as.data.frame()
+  main.tbl <- main.tbl[grep('PMI', main.tbl$externalId),]
   fitbit.tbl <- read.csv(synapser::synGet(fitbit.tableId)$path) %>% dplyr::select(-X)
   polar.tbl <- read.csv(synapser::synGet(polar.tableId)$path) %>% dplyr::select(-X)
   all.used.ids <- c(crf.tableId, fitbit.tableId, polar.tableId) # provenance tracking
+  
+  # Add required columns from main table
+  crf.tbl <- crf.tbl %>% 
+    dplyr::left_join(main.tbl %>% 
+                       dplyr::select(recordId, 
+                                     appVersion, createdOn,
+                                     createdOnTimeZone, phoneInfo))
   
   # Convert times into POSIXct format
   fitbit.tbl$timestamp <- strptime(fitbit.tbl$timestamp, format = '%Y-%m-%d %H:%M:%S',tz='') %>% as.POSIXct()

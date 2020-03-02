@@ -81,56 +81,71 @@ completeCases <- function(data, desiredCols) {
   return(data[completeVec, ])
 }
 
-# Get and estimate of HR across red, green and blue channels for a given timestamp
-getCrfHeartRate <- function(dat.crf, hr.timestamp){
+# Estimate V02 max
+estimateVo2 <- function(pdat){
+  ageIn <- pdat$Age[1]
+  genderIn <- pdat$Gender[1]
+  weightIn <- pdat$`Wt (kg)`[1]
+  recordIdIn <- pdat$recordId[1]
+  externalIdIn <- pdat$externalId[1]
   
-  dat.crf.temp <- dat.crf %>%
-    dplyr::filter(startTime <= hr.timestamp,
-                  stopTime >= hr.timestamp) %>% 
-    dplyr::mutate(hr.distance = abs(abs(hr.timestamp-startTime) - abs(stopTime-hr.timestamp)))
-
-  # Take only those HR values that cross the conf threshold
-  dat.red <- dat.crf.temp %>% 
-    dplyr::filter(redConf > 0.5) %>% 
-    dplyr::summarise(redHRt = mean(as.numeric(redHR), na.rm = T),
-                     redHRtConf = mean(as.numeric(redConf), na.rm = T))
+  pdat <- pdat %>% dplyr::ungroup() %>% as.data.frame()
+  pdat$startTime[which(pdat$startTime == '')] <- NA
+  pdat$stopTime[which(pdat$stopTime == '')] <- NA
+  pdat$stairStartTime[which(pdat$stairStartTime == '')] <- NA
+  pdat$stairStopTime[which(pdat$stairStopTime == '')] <- NA
   
-  dat.green <- dat.crf.temp %>% 
-    dplyr::filter(greenConf > 0.5) %>% 
-    dplyr::summarise(greenHRt = mean(as.numeric(greenHR), na.rm = T),
-                     greenHRtConf = mean(as.numeric(greenConf), na.rm = T))
-
-  dat.blue <- dat.crf.temp %>% 
-    dplyr::filter(blueConf > 0.5) %>% 
-    dplyr::summarise(blueHRt = mean(as.numeric(blueHR), na.rm = T),
-                     blueHRtConf = mean(as.numeric(blueConf), na.rm = T))
+  # CRF heartrate data
+  pdat.crf <- completeCases(pdat,c('startTime','stopTime',
+                                   'stairStartTime','stairStopTime'))
   
-  dat.crf <- data.frame(metric = c('red','green','blue'),
-                        hr = c(dat.red$redHRt, dat.green$greenHRt, dat.blue$blueHRt),
-                        conf = c(dat.red$redHRtConf, dat.green$greenHRtConf, dat.blue$blueHRtConf))
+  pdat.crf <- tryCatch({pdat.crf %>%
+      dplyr::mutate_at(.vars = c('startTime','stopTime',
+                                 'stairStartTime','stairStopTime'),
+                       .funs = as.POSIXct)
+  }, error = function(e){
+    pdat.crf <- data.frame()
+  })
   
-  # Estimated Heartrate is currently the most confident of 
-  # red and blue channels
-  # Sage-Bionetworks/CardiorespiratoryFitness-iOS/CardiorespiratoryFitness/CardiorespiratoryFitness/iOS/CRFHeartRateSampleProcessor.swift
-  est.crf.dat <- dat.crf %>% 
-    dplyr::filter(metric != 'blue') %>% 
-    na.omit() %>% 
-    dplyr::filter(conf == max(.$conf))
+  pdat.crf.15to30 <- pdat.crf %>% 
+    dplyr::filter(startTime >= pdat.crf$stairStopTime[1] + 10, # 15sec
+                   startTime <= pdat.crf$stairStopTime[1] + 25) %>%  # 30sec 
+    dplyr::summarise(recordId = recordId[1],
+                     red = mean(redHR[redConf>0.5], na.rm = T)*0.25,
+                     green = mean(greenHR[greenConf>0.5], na.rm = T)*0.25,
+                     camerahr = mean(estHR, na.rm = T)*0.25,
+                     fitbit = mean(fitbit.hr, na.rm = T)*0.25,
+                     polar = mean(polar.hr, na.rm = T)*0.25) %>% 
+    tidyr::gather(metric, hb15to30, 2:6)
   
-  estHRt <- tryCatch({mean(est.crf.dat$hr %>% as.numeric())}
-                     ,error = function(e){return(NA)})  
-  estHRt.conf <- tryCatch({mean(est.crf.dat$conf %>% as.numeric())}
-                          ,error = function(e){return(NA)})  
+  pdat.crf.30to60 <- pdat.crf %>% 
+    dplyr::filter(startTime >= pdat.crf$stairStopTime[1] + 25, # 15sec
+                  startTime <= pdat.crf$stairStopTime[1] + 55) %>%  # 30sec 
+    dplyr::summarise(recordId = recordId[1],
+                     red = mean(redHR[redConf>0.5], na.rm = T)*0.5,
+                     green = mean(greenHR[greenConf>0.5], na.rm = T)*0.5,
+                     camerahr = mean(estHR, na.rm = T)*0.5,
+                     fitbit = mean(fitbit.hr, na.rm = T)*0.5,
+                     polar = mean(polar.hr, na.rm = T)*0.5) %>% 
+    tidyr::gather(metric, hb30to60, 2:6)
   
-  est.hr.dat <- data.frame(metric = 'camerahr',
-                           hr = estHRt,
-                           conf = estHRt.conf)
   
-  dat.crf <- dat.crf %>% 
-    dplyr::full_join(est.hr.dat)
+  dat <- pdat.crf.15to30 %>% 
+    dplyr::full_join(pdat.crf.30to60) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::rowwise() %>% 
+    dplyr::mutate(recordId = recordIdIn) %>% 
+    dplyr::mutate(externalId = externalIdIn) %>% 
+    dplyr::mutate(age = ageIn) %>% 
+    dplyr::mutate(gender = genderIn) %>% 
+    dplyr::mutate(weight = weightIn) %>% 
+    dplyr::mutate(vo2Max.Milligan1 = vo2MaxMilligan1(hb30to60, age = ageIn)) %>% 
+    dplyr::mutate(vo2Max.Milligan2 = vo2MaxMilligan2(hb30to60, age = ageIn, gender = genderIn)) %>% 
+    dplyr::mutate(vo2Max.Sharkey = vo2MaxSharkey(hb15to30, weight = weightIn, gender = genderIn))
   
-  return(dat.crf)
+  return(dat)
 }
+
 
 #############
 # Download processes Synapse tables and excel files
@@ -180,159 +195,27 @@ vo2.tbl <- vo2.tbl %>%
                      dplyr::select('createdDate', 'externalId','inClinic')) 
 vo2.tbl$inClinic[is.na(vo2.tbl$inClinic)] <- FALSE
 
-# Estimate V02 max
-estimateVo2 <- function(pdat){
-  ageIn <- pdat$Age[1]
-  genderIn <- pdat$Gender[1]
-  weightIn <- pdat$`Wt (kg)`[1]
-  recordIdIn <- pdat$recordId[1]
-  externalIdIn <- pdat$externalId[1]
-  
-  pdat <- pdat %>% dplyr::ungroup() %>% as.data.frame()
-  pdat$startTime[which(pdat$startTime == '')] <- NA
-  pdat$stopTime[which(pdat$stopTime == '')] <- NA
-  pdat$stairStartTime[which(pdat$stairStartTime == '')] <- NA
-  pdat$stairStopTime[which(pdat$stairStopTime == '')] <- NA
-  
-  # CRF heartrate data
-  pdat.crf <- completeCases(pdat,c('startTime','stopTime',
-                                   'stairStartTime','stairStopTime'))
-  
-  pdat.crf <- tryCatch({pdat.crf %>%
-      dplyr::mutate_at(.vars = c('startTime','stopTime',
-                                 'stairStartTime','stairStopTime'),
-                       .funs = as.POSIXct)
-  }, error = function(e){
-    pdat.crf <- data.frame()
-  })
-  
-  
-  if(nrow(pdat.crf)!= 0){
-    hr.crf.dat <- lapply(seq(15,60), function(itime){ # Only need HR data for times 15-60s post jog
-      getCrfHeartRate(pdat.crf, as.POSIXct(pdat$stairStopTime[1]) + itime) %>% 
-        dplyr::mutate(time = itime)
-    }) %>% data.table::rbindlist()
-    
+# Get estimated HR and confidence per row
+vo2.tbl <- vo2.tbl %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(redConfN = if(redConf > 0.5 && !is.na(redConf)) redConf else NA,
+                greenConfN = if(greenConf > 0.5 && !is.na(greenConf)) greenConf else NA) %>% 
+  dplyr::mutate(estHR = if(!is.na(redConfN) && !is.na(greenConfN)){
+    if(redConfN > greenConfN){
+      redHR
+    }else{
+      greenHR
+    }
+  }else if(!is.na(redConfN)){
+    redHR
+  }else if(!is.na(greenConfN)){
+    greenHR
   }else{
-    hr.crf.dat <- data.frame(hr = rep(NA, length(seq(15,60))),
-                             time = seq(15,60),
-                             metric = rep('red', length(seq(15,60))),
-                             conf = rep(NA, length(seq(15,60)))) %>% 
-      rbind(data.frame(hr = rep(NA, length(seq(15,60))),
-                       time = seq(15,60),
-                       metric = rep('green', length(seq(15,60))),
-                       conf = rep(NA, length(seq(15,60))))) %>% 
-      rbind(data.frame(hr = rep(NA, length(seq(15,60))),
-                       time = seq(15,60),
-                       metric = rep('blue', length(seq(15,60))),
-                       conf = rep(NA, length(seq(15,60))))) %>% 
-      rbind(data.frame(hr = rep(NA, length(seq(15,60))),
-                       time = seq(15,60),
-                       metric = rep('camerahr', length(seq(15,60))),
-                       conf = rep(NA, length(seq(15,60))))) 
-  }
-  
-  # Fitbit heartrate data
-  pdat.fitbit <- pdat %>%
-    dplyr::select(fitbit.hr, fitbit.timestamp) %>% 
-    na.omit()
-  
-  getFitbitHeartRate <- function(dat.fitbit, hr.timestamp){
-    dat.fitbit <- dat.fitbit %>% 
-      dplyr::mutate(hr.distance.fitbit = abs(hr.timestamp - fitbit.timestamp))
-    hr.distance.opt.fitbit <- min(dat.fitbit$hr.distance.fitbit)
-    dat.fitbit <- dat.fitbit %>% dplyr::filter(hr.distance.fitbit == hr.distance.opt.fitbit)
-    fitbitHRt <- tryCatch({mean(dat.fitbit$fitbit.hr %>% as.numeric())}
-                          ,error = function(e){return(NA)})
-    return(fitbitHRt)  
-  }
-  
-  if(nrow(pdat.fitbit) != 0){
-    pdat.fitbit <- pdat.fitbit %>%
-      dplyr::mutate_at(.vars = c('fitbit.timestamp'),
-                       .funs = as.POSIXct)
-    
-    fitbit.dat <- lapply(seq(15,60), function(itime){ # Only need HR data for times 15-60s post jog
-      getFitbitHeartRate(pdat.fitbit, as.POSIXct(pdat$stairStopTime[1]) + itime) %>% 
-        as.data.frame() %>% 
-        `colnames<-`(c('hr')) %>% 
-        dplyr::mutate(time = itime) %>%
-        dplyr::mutate(metric = 'fitbit')
-    }) %>% data.table::rbindlist() %>% 
-      dplyr::mutate(conf = NA)
-    
-    
-  }else{
-    fitbit.dat <- data.frame(hr = rep(NA, length(seq(15,60))),
-                             time = seq(15,60),
-                             metric = rep('fitbit', length(seq(15,60))),
-                             conf = rep(NA, length(seq(15,60))))
-  }
-  
-  # Polar heartrate data
-  pdat.polar <- pdat %>%
-    dplyr::select(polar.hr, polar.timestamp) %>% 
-    na.omit()
-  
-  getPolarHeartRate <- function(dat.polar, hr.timestamp){
-    dat.polar <- dat.polar %>% 
-      dplyr::mutate(hr.distance.polar = abs(hr.timestamp - polar.timestamp))
-    hr.distance.opt.polar <- min(dat.polar$hr.distance.polar)
-    dat.polar <- dat.polar %>% dplyr::filter(hr.distance.polar == hr.distance.opt.polar)
-    polarHRt <- tryCatch({mean(dat.polar$polar.hr %>% as.numeric())}
-                         ,error = function(e){return(NA)})
-    return(polarHRt)  
-  }
-  
-  if(nrow(pdat.polar) != 0){
-    pdat.polar <- pdat.polar %>%
-      dplyr::mutate_at(.vars = c('polar.timestamp'),
-                       .funs = as.POSIXct)
-    polar.dat <- lapply(seq(15,60), function(itime){ # Only need HR data for times 15-60s post jog
-      getPolarHeartRate(pdat.polar, as.POSIXct(pdat$stairStopTime[1]) + itime) %>% 
-        as.data.frame() %>% 
-        `colnames<-`(c('hr')) %>% 
-        dplyr::mutate(time = itime) %>%
-        dplyr::mutate(metric = 'polar')
-    }) %>% data.table::rbindlist() %>% 
-      dplyr::mutate(conf = NA)
-    
-  }else{
-    polar.dat <- data.frame(hr = rep(NA, length(seq(15,60))),
-                            time = seq(15,60),
-                            metric = rep('polar', length(seq(15,60))),
-                            conf = rep(NA, length(seq(15,60))))
-  }
+    NA
+  },
+  estConf = max(redConfN, greenConfN, na.rm = T)) %>% 
+  dplyr::mutate(estConf = if(is.infinite(estConf)) NA else estConf) 
 
-  # Pick the hr values that have conf >= 0.5
-  hr.crf.dat.minconf <- hr.crf.dat %>% 
-    dplyr::filter(conf >= 0.5)
-  
-  dat1530 <- rbind(hr.crf.dat.minconf, fitbit.dat, polar.dat) %>%
-    dplyr::filter(time < 31) %>% 
-    dplyr::group_by(metric) %>% 
-    dplyr::summarise(hb15to30 = 0.25*mean(hr, na.rm = T),
-                     conf15 = mean(conf, na.rm = T))
-  dat3060 <- rbind(hr.crf.dat.minconf, fitbit.dat, polar.dat) %>%
-    dplyr::filter(time > 30) %>% 
-    dplyr::group_by(metric) %>% 
-    dplyr::summarise(hb30to60 = 0.5*mean(hr, na.rm = T),
-                     conf30 = mean(conf, na.rm = T))
-  
-  dat <- dat1530 %>% dplyr::left_join(dat3060)
-  
-  dat <- dat %>% dplyr::ungroup() %>% 
-    dplyr::mutate(recordId = recordIdIn) %>% 
-    dplyr::mutate(externalId = externalIdIn) %>% 
-    dplyr::mutate(age = ageIn) %>% 
-    dplyr::mutate(gender = genderIn) %>% 
-    dplyr::mutate(weight = weightIn) %>% 
-    dplyr::mutate(vo2Max.Milligan1 = vo2MaxMilligan1(hb30to60, age = ageIn)) %>% 
-    dplyr::mutate(vo2Max.Milligan2 = vo2MaxMilligan2(hb30to60, age = ageIn, gender = genderIn)) %>% 
-    dplyr::mutate(vo2Max.Sharkey = vo2MaxSharkey(hb15to30, weight = weightIn, gender = genderIn))
-  
-  return(dat)
-}
 
 vo2.estiamtes.tbl <- vo2.tbl %>%
   dplyr::filter(Assay == 'after') %>%
@@ -344,13 +227,13 @@ vo2.estiamtes.tbl <- vo2.tbl %>%
   as.data.frame() %>% 
   dplyr::left_join(vo2.tbl %>% 
                      dplyr::select('recordId','createdDate', 'externalId','inClinic')) %>% 
-  unique()
+  unique() 
 
 # Github link
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
-thisFileName <- 'crf_vo2.R'
-thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
+thisFileName <- 'analysis/crf_vo2.R'
+thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='sagebio_master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse

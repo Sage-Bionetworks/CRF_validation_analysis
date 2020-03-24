@@ -24,6 +24,7 @@ library(githubr)
 library(ggplot2)
 library(parsedate)
 library(lubridate)
+library(zeallot) 
 synLogin()
 
 ##############
@@ -34,7 +35,7 @@ get_hrdata_window_metrics <- function(hr_data,
                                       window_overlap = 0.5,
                                       method = 'acf') {
   ## We will throw away ~5s worth of data(180 samples) after filtering,
-  ## keep this in mind
+  ## because of mhealthtools (get_heartrate algorithm) keep this in mind
   
   heartrate_error_frame <- data.frame(red = NA, green = NA, blue = NA,
                                       error = NA, sampling_rate = NA)
@@ -178,6 +179,26 @@ getWindowMetricsTime <- function(x, sampling_rate, channel = 'red'){
 }
 
 
+findHRinSubset <- function(x_acf, sampling_rate_, min_hr_, max_hr_){
+  y <- NA * x_acf
+  lag_left <- ceiling(60 * sampling_rate_ / max_hr_)
+  lag_right <- floor(60 * sampling_rate_ / min_hr_)
+  y[seq(lag_left, lag_right)] <- x_acf[seq(lag_left, lag_right)]
+  y_max_pos <- which.max(y)
+  y_min_pos <- which.min(y)
+  most_conf_hr <-  60 * sampling_rate_ / (y_max_pos - 1)
+  min_conf_hr <- 60 * sampling_rate_ / (y_min_pos - 1)
+  max_conf_y <- max(y, na.rm = T)
+  min_conf_y <- min(y, na.rm = T)
+  
+  return(list(
+    most_conf_hr,
+    min_conf_hr,
+    max_conf_y,
+    min_conf_y
+  ))
+}
+
 getWindowMetricsAcf <- function(x, sampling_rate, channel = 'red',
                                 min_hr = 45, max_hr = 240){
   # x is a time series
@@ -186,78 +207,25 @@ getWindowMetricsAcf <- function(x, sampling_rate, channel = 'red',
   x_mhealthtools <- mhealthtools:::get_hr_from_time_series(x, sampling_rate)
   
   x <- stats::acf(x, lag.max = max_lag, plot = F)$acf
-  y <- NA * x
-  y[seq(min_lag, max_lag)] <- x[seq(min_lag, max_lag)]
-  y_max_pos <- which.max(y)
-  y_min_pos <- which.min(y)
-  most_conf_hr <-  60 * sampling_rate / (y_max_pos - 1)
-  min_conf_hr <- 60 * sampling_rate / (y_min_pos - 1)
   max_conf_x <- max(x, na.rm = T)
-  max_conf_y <- max(y, na.rm = T)
-  min_conf_y <- min(y, na.rm = T)
+  c(most_conf_hr, min_conf_hr, max_conf_y, min_conf_y) %<-% findHRinSubset(x, sampling_rate, min_hr, max_hr)
   
   # Find HR most and min conf in each of the HR ranges
   # 45-90, 90-135, 135-180, 180-225 and 225-240
   # 45-90
-  y <- NA * x
-  lag_left <- ceiling(60 * sampling_rate / 90)
-  lag_right <- floor(60 * sampling_rate / 45)
-  y[seq(lag_left, lag_right)] <- x[seq(lag_left, lag_right)]
-  y_max_pos <- which.max(y)
-  y_min_pos <- which.min(y)
-  most_conf_hr_45_90 <-  60 * sampling_rate / (y_max_pos - 1)
-  min_conf_hr_45_90 <- 60 * sampling_rate / (y_min_pos - 1)
-  max_conf_y_45_90 <- max(y, na.rm = T)
-  min_conf_y_45_90 <- min(y, na.rm = T)
+  c(most_conf_hr_45_90, min_conf_hr_45_90, max_conf_y_45_90, min_conf_y_45_90) %<-% findHRinSubset(x, sampling_rate, 45, 90)
   
   # 90-135
-  y <- NA * x
-  lag_left <- ceiling(60 * sampling_rate / 135)
-  lag_right <- floor(60 * sampling_rate / 90)
-  y[seq(lag_left, lag_right)] <- x[seq(lag_left, lag_right)]
-  y_max_pos <- which.max(y)
-  y_min_pos <- which.min(y)
-  most_conf_hr_90_135 <-  60 * sampling_rate / (y_max_pos - 1)
-  min_conf_hr_90_135 <- 60 * sampling_rate / (y_min_pos - 1)
-  max_conf_y_90_135 <- max(y, na.rm = T)
-  min_conf_y_90_135 <- min(y, na.rm = T)
+  c(most_conf_hr_90_135, min_conf_hr_90_135, max_conf_y_90_135, min_conf_y_90_135) %<-% findHRinSubset(x, sampling_rate, 90, 135)
   
   # 135-180
-  y <- NA * x
-  lag_left <- ceiling(60 * sampling_rate / 180)
-  lag_right <- floor(60 * sampling_rate / 135)
-  y[seq(lag_left, lag_right)] <- x[seq(lag_left, lag_right)]
-  y_max_pos <- which.max(y)
-  y_min_pos <- which.min(y)
-  most_conf_hr_135_180 <-  60 * sampling_rate / (y_max_pos - 1)
-  min_conf_hr_135_180 <- 60 * sampling_rate / (y_min_pos - 1)
-  max_conf_y_135_180 <- max(y, na.rm = T)
-  min_conf_y_135_180 <- min(y, na.rm = T)
+  c(most_conf_hr_135_180, min_conf_hr_135_180, max_conf_y_135_180, min_conf_y_135_180) %<-% findHRinSubset(x, sampling_rate, 135, 180)
   
   # 180-225
-  y <- NA * x
-  lag_left <- ceiling(60 * sampling_rate / 225)
-  lag_right <- floor(60 * sampling_rate / 180)
-  y[seq(lag_left, lag_right)] <- x[seq(lag_left, lag_right)]
-  y_max_pos <- which.max(y)
-  y_min_pos <- which.min(y)
-  most_conf_hr_180_225 <-  60 * sampling_rate / (y_max_pos - 1)
-  min_conf_hr_180_225 <- 60 * sampling_rate / (y_min_pos - 1)
-  max_conf_y_180_225 <- max(y, na.rm = T)
-  min_conf_y_180_225 <- min(y, na.rm = T)
+  c(most_conf_hr_180_225, min_conf_hr_180_225, max_conf_y_180_225, min_conf_y_180_225) %<-% findHRinSubset(x, sampling_rate, 180, 225)
   
   # 225-240
-  y <- NA * x
-  lag_left <- ceiling(60 * sampling_rate / 240)
-  lag_right <- floor(60 * sampling_rate / 225)
-  y[seq(lag_left, lag_right)] <- x[seq(lag_left, lag_right)]
-  y_max_pos <- which.max(y)
-  y_min_pos <- which.min(y)
-  most_conf_hr_225_240 <-  60 * sampling_rate / (y_max_pos - 1)
-  min_conf_hr_225_240 <- 60 * sampling_rate / (y_min_pos - 1)
-  max_conf_y_225_240 <- max(y, na.rm = T)
-  min_conf_y_225_240 <- min(y, na.rm = T)
-  
+  c(most_conf_hr_225_240, min_conf_hr_225_240, max_conf_y_225_240, min_conf_y_225_240) %<-% findHRinSubset(x, sampling_rate, 225, 240)
   
   acf_feat <- data.frame(
     mhealthtools_hr = x_mhealthtools[1],

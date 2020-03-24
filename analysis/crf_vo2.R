@@ -1,6 +1,7 @@
 ########################################################################
 # CRF Project 
-# Purpose: To estimate V02 max from hr30 (heart rate after 30sec) after completing the 12 Min Run in CRF Module
+# Purpose: To estimate V02 max from hr30 (heart rate after 30sec) after completing the Tecumseh 
+#          Stair Step test in CRF Module
 # Author: Meghasyam Tummalacherla
 # email: meghasyam@sagebase.org
 ########################################################################
@@ -53,25 +54,19 @@ vo2MaxMilligan2 <- function(hb30to60, age, gender){
 
 # Sharkey(Brian J Sharkey) Cited Equations for Vo2 Max
 vo2MaxSharkey <- function(hb15to30, weight, gender){
-  if(tolower(gender) == 'male' && !(is.na(hb15to30)) && !(is.na(weight))){
-    if(hb15to30>=0){
+  if(!(is.na(hb15to30)) && !(is.na(weight))){
+    if((hb15to30>=0) && (tolower(gender) == 'male')){
       maxPulse <- 64.83 + 0.662*hb15to30*4
       # hb15to30*4 because we need post excercise heartrate
       # measured between 15 and 30s
       return(3.744*((weight+5)/(maxPulse-62))*1000/weight)
       # 1000/weight is to convert l/min to ml/kg/min
-    }else{
-      return(NA)
-    }
-  }else if(tolower(gender) == 'female' && !(is.na(hb15to30)) && !(is.na(weight))){
-    if(hb15to30>=0){
+    }else if((hb15to30>=0) && (tolower(gender) == 'female')){
       maxPulse <- 51.33 + 0.75*hb15to30*4
       return(3.75*((weight-3)/(maxPulse-65))*1000/weight)
     }else{
       return(NA)
     }
-  }else{
-    return(NA)
   }
 }
 
@@ -107,6 +102,9 @@ estimateVo2 <- function(pdat){
     pdat.crf <- data.frame()
   })
   
+  # To estimate a HR for a given time t, we look for a window whose
+  # mid-point is that time t. For eg., if we look for 15 sec, for a 10 sec 
+  # window, we would be looking at 10-20sec, where 15 sec is the mid-point
   pdat.crf.15to30 <- pdat.crf %>% 
     dplyr::filter(startTime >= pdat.crf$stairStopTime[1] + 10, # 15sec
                    startTime <= pdat.crf$stairStopTime[1] + 25) %>%  # 30sec 
@@ -119,8 +117,8 @@ estimateVo2 <- function(pdat){
     tidyr::gather(metric, hb15to30, 2:6)
   
   pdat.crf.30to60 <- pdat.crf %>% 
-    dplyr::filter(startTime >= pdat.crf$stairStopTime[1] + 25, # 15sec
-                  startTime <= pdat.crf$stairStopTime[1] + 55) %>%  # 30sec 
+    dplyr::filter(startTime >= pdat.crf$stairStopTime[1] + 25, # 30sec
+                  startTime <= pdat.crf$stairStopTime[1] + 55) %>%  # 60sec 
     dplyr::summarise(recordId = recordId[1],
                      red = mean(redHR[redConf>0.5], na.rm = T)*0.5,
                      green = mean(greenHR[greenConf>0.5], na.rm = T)*0.5,

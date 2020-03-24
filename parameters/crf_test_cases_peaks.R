@@ -32,16 +32,16 @@ max_hr <- 210
 # Required functions 
 ##############
 getTestCaseJson <- function(x_signal,
-                            sampling_rate = 60,
-                            min_hr = 45,
-                            max_hr = 210){
+                            sampling_rate_ = 60,
+                            min_hr_ = 45,
+                            max_hr_ = 210){
   
   # min and max lag in ACF based on sampling rate, min and max hr 
-  max_lag = round(60 * sampling_rate / min_hr) # 4/3 fs is 45BPM
-  min_lag = round(60 * sampling_rate / max_hr) # 1/3.5 fs is 210BPM
+  max_lag = round(60 * sampling_rate_ / min_hr_) # 4/3 fs is 45BPM
+  min_lag = round(60 * sampling_rate_ / max_hr_) # 1/3.5 fs is 210BPM
   
   # Hr and conf estimates from mhealthtools 
-  x_op <- mhealthtools:::get_hr_from_time_series(x_signal, sampling_rate)
+  x_op <- mhealthtools:::get_hr_from_time_series(x_signal, sampling_rate_)
   
   # Testing the mhealthtools implementation of getAliasedPeaks,
   # and get_hr_from_time_series
@@ -53,12 +53,12 @@ getTestCaseJson <- function(x_signal,
   y_max_pos <- which.max(y)
   y_max <- max(y)
   y_min <- min(y)
-  hr_initial_guess <- 60 * sampling_rate / (y_max_pos - 1)
+  hr_initial_guess <- 60 * sampling_rate_ / (y_max_pos - 1)
   
   # Get Aliased peaks
   aliasedPeak <- mhealthtools:::getAliasingPeakLocation(hr = hr_initial_guess,
                                                         actual_lag = y_max_pos,
-                                                        sampling_rate = sampling_rate,
+                                                        sampling_rate = sampling_rate_,
                                                         min_lag = min_lag,
                                                         max_lag = max_lag)
   # Store data into a JSON
@@ -73,7 +73,7 @@ getTestCaseJson <- function(x_signal,
                                   est_hr = x_op[1],
                                   est_conf = x_op[2],
                                   aliased_peak = aliasedPeak,
-                                  sampling_rate = sampling_rate,
+                                  sampling_rate = sampling_rate_,
                                   min_lag = min_lag,
                                   max_lag = max_lag)
   

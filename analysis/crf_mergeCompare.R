@@ -1,6 +1,6 @@
 ########################################################################
 # CRF Project 
-# Purpose: To merge fitbit, polar and crf app data to compare the results
+# Purpose: To merge fitbit, polar and crf app data and upload to synapse
 # Author: Meghasyam Tummalacherla
 # email: meghasyam@sagebase.org
 ########################################################################

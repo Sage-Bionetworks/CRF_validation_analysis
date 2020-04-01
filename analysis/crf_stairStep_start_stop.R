@@ -130,7 +130,7 @@ stair.times <- apply(hr.table.meta,1,function(x){
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
 thisFileName <- 'analysis/crf_stairStep_start_stop.R'
-thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='sagebio_master')
+thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse

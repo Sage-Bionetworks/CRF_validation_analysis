@@ -267,7 +267,7 @@ all.equal(a1, io_examples_whole_12) # Check to see no data loss during json conv
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
 thisFileName <- 'parameters/crf_io_examples.R'
-thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='sagebio_master')
+thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Input - output example JSON

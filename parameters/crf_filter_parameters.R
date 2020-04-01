@@ -83,7 +83,7 @@ mean_centering_filter_params <- lapply(sampling_rates, getMeanFilterOrder) %>%
 gtToken = 'github_token.txt';
 githubr::setGithubToken(as.character(read.table(gtToken)$V1))
 thisFileName <- 'parameters/crf_filter_parameters.R'
-thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='sagebio_master')
+thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
 thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write parameters data to Synapse

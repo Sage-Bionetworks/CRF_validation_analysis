@@ -290,7 +290,7 @@ for (i in seq(nrow(ref.details))){
   gtToken = 'github_token.txt';
   githubr::setGithubToken(as.character(read.table(gtToken)$V1))
   thisFileName <- 'crf_extractHR.R'
-  thisRepo <- getRepo(repository = "itismeghasyam/CRF_validation_analysis", ref="branch", refName='master')
+  thisRepo <- getRepo(repository = "Sage-Bionetworks/CRF_validation_analysis", ref="branch", refName='master')
   thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
   
   # Write to Synapse

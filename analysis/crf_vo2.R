@@ -54,19 +54,25 @@ vo2MaxMilligan2 <- function(hb30to60, age, gender){
 
 # Sharkey(Brian J Sharkey) Cited Equations for Vo2 Max
 vo2MaxSharkey <- function(hb15to30, weight, gender){
-  if(!(is.na(hb15to30)) && !(is.na(weight))){
-    if((hb15to30>=0) && (tolower(gender) == 'male')){
+  if(tolower(gender) == 'male' && !(is.na(hb15to30)) && !(is.na(weight))){
+    if(hb15to30>=0){
       maxPulse <- 64.83 + 0.662*hb15to30*4
       # hb15to30*4 because we need post excercise heartrate
       # measured between 15 and 30s
       return(3.744*((weight+5)/(maxPulse-62))*1000/weight)
       # 1000/weight is to convert l/min to ml/kg/min
-    }else if((hb15to30>=0) && (tolower(gender) == 'female')){
+    }else{
+      return(NA)
+    }
+  }else if(tolower(gender) == 'female' && !(is.na(hb15to30)) && !(is.na(weight))){
+    if(hb15to30>=0){
       maxPulse <- 51.33 + 0.75*hb15to30*4
       return(3.75*((weight-3)/(maxPulse-65))*1000/weight)
     }else{
       return(NA)
     }
+  }else{
+    return(NA)
   }
 }
 
@@ -236,7 +242,7 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 
 # Write to Synapse
 write.csv(vo2.estiamtes.tbl,file = paste0('tecumesh_vo2_estimates','.csv'),na="")
-obj = File(paste0('tecumesh_vo2_estimates','.csv'), 
-           name = paste0('tecumesh_vo2_estimates','.csv'), 
+obj = File(paste0('tecumseh_vo2_estimates','.csv'),
+           name = paste0('tecumseh_vo2_estimates','.csv'),
            parentId = 'syn12435196')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)

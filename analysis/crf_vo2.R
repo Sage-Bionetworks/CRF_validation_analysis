@@ -57,19 +57,20 @@ vo2MaxSharkey <- function(hb15to30, weight, gender){
   if(is.na(hb15to30) || is.na(weight)){
     # QC loop for hb15to30 and weight
     return(NA)
-  }else{
-    if(tolower(gender) == 'male'){
-      # gender is either 'Male' or 'Female' only
-      maxPulse <- 64.83 + 0.662*hb15to30*4
-      # hb15to30*4 because we need post excercise heartrate
-      # measured between 15 and 30s
-      return(3.744*((weight+5)/(maxPulse-62))*1000/weight)
-      # 1000/weight is to convert l/min to ml/kg/min
-    }else{
-      maxPulse <- 51.33 + 0.75*hb15to30*4
-      return(3.75*((weight-3)/(maxPulse-65))*1000/weight)
-    }
   }
+  
+  if(tolower(gender) == 'male'){
+    # gender is either 'Male' or 'Female' only
+    maxPulse <- 64.83 + 0.662*hb15to30*4
+    # hb15to30*4 because we need post excercise heartrate
+    # measured between 15 and 30s
+    return(3.744*((weight+5)/(maxPulse-62))*1000/weight)
+    # 1000/weight is to convert l/min to ml/kg/min
+  }else{
+    maxPulse <- 51.33 + 0.75*hb15to30*4
+    return(3.75*((weight-3)/(maxPulse-65))*1000/weight)
+  }
+  
 }
 
 # Remove NAs/ empty rows
@@ -109,7 +110,7 @@ estimateVo2 <- function(pdat){
   # window, we would be looking at 10-20sec, where 15 sec is the mid-point
   pdat.crf.15to30 <- pdat.crf %>% 
     dplyr::filter(startTime >= pdat.crf$stairStopTime[1] + 10, # 15sec
-                   startTime <= pdat.crf$stairStopTime[1] + 25) %>%  # 30sec 
+                  startTime <= pdat.crf$stairStopTime[1] + 25) %>%  # 30sec 
     dplyr::summarise(recordId = recordId[1],
                      red = mean(redHR[redConf>0.5], na.rm = T)*0.25,
                      green = mean(greenHR[greenConf>0.5], na.rm = T)*0.25,

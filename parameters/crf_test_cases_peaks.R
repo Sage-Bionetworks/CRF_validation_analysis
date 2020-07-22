@@ -136,10 +136,10 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 # Write to Synapse
 obj = File('io_example_earlier_peak.json',
            name = 'io_example_earlier_peak.json',
-           parentId = 'syn18497861')
+           parentId = 'syn22268507')
 obj = synStore(obj, executed = thisFile)
 
 obj = File('io_example_later_peak.json',
            name = 'io_example_later_peak.json',
-           parentId = 'syn18497861')
+           parentId = 'syn22268507')
 obj = synStore(obj, executed = thisFile)

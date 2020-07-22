@@ -69,6 +69,9 @@ ref.details <- data.frame(tableId = c('syn22254983',
                                    'Cardio Stress Test',
                                    '3-MST'))
 
+baseline.tbl <- synTableQuery(paste('select * from', 'syn22254979'))$asDataFrame() %>% 
+  dplyr::rename(externalId = participantId)
+
 # Create a polar table tailored for each reference table
 for(i in seq(nrow(ref.details))){
   
@@ -80,11 +83,12 @@ for(i in seq(nrow(ref.details))){
   ref.tbl.syn <- synTableQuery(paste('select * from', ref.tableId))
   ref.tbl <- ref.tbl.syn$asDataFrame()
   ref.tbl <- ref.tbl %>%
+    dplyr::left_join(baseline.tbl) %>% 
     dplyr::select(recordId, healthCode, externalId, createdOn, createdOnTimeZone) %>% 
     dplyr::mutate(createdDate = as.character(as.Date.character(createdOn))) %>%
     unique()
   
-  all.used.ids = c(polar.syn.id,ref.tableId) # provenance tracking
+  all.used.ids = c(polar.syn.id,ref.tableId, 'syn22254979') # provenance tracking
   
   # Find healthCodes and timezones they are in
   hc.timezone.tbl <- ref.tbl %>% 

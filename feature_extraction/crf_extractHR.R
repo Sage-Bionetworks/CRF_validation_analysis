@@ -96,12 +96,12 @@ getStartAndStopTime <- function(x, assay){
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #############
 # SynIds and names of reference tables
-ref.details <- data.frame(tableId = c('syn11665074',
-                                      'syn11580624',
-                                      'syn11432994'),
-                          name = c('Cardio 12MT-v5',
-                                   'Cardio Stress Test-v1',
-                                   'Cardio Stair Step-v1'))
+ref.details <- data.frame(tableId = c('syn22254983',
+                                      'syn22119505',
+                                      'syn22254980'),
+                          name = c('12-MRT',
+                                   'Cardio Stress Test',
+                                   '3-MST'))
 
 # Create a hr table tailored for each reference table
 for (i in seq(nrow(ref.details))){
@@ -297,6 +297,6 @@ for (i in seq(nrow(ref.details))){
   write.csv(hr.results,file = paste0('hr_results',name,'.csv'),na="")
   obj = File(paste0('hr_results',name,'.csv'),
              name = paste0('hr_results',name,'.csv'),
-             parentId = 'syn11968320')
+             parentId = 'syn22268519')
   obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 }

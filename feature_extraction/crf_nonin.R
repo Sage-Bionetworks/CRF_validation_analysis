@@ -202,8 +202,8 @@ deMystifyITA <- function(ITA){
 #######################################
 ## CRF Validation Data (Nonin and the SpectroColorimeter readings) filepaths
 
-crf.tableId = 'syn17009128'
-name = 'CRF_HR_validation_questions'
+crf.tableId = 'syn22268058'
+name = 'Baseline and PulseOx - Calibration'
 
 all.used.ids = crf.tableId # provenance tracking
 columnsToDownload = c('iPhone SE Nonin File','iPhone 8+ Nonin file','iPhone XS Nonin File',
@@ -242,8 +242,8 @@ for(i in seq(2,length(columnsToDownload))){
 
 ## Phone Camera Json data filepaths
 
-phone.tableId = 'syn17007713'
-name = 'HeartRate Measurement-v8'
+phone.tableId = 'syn22268054'
+name = 'HeartRate Measurement - Calibration'
 
 all.used.ids <- c(all.used.ids, phone.tableId)
 hr.tbl.syn <- synTableQuery(paste("select * from ", phone.tableId))
@@ -464,27 +464,27 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 write.csv(nonin.hr.tbl,file = paste0('nonin','.csv'),na="")
 obj = File(paste0('nonin','.csv'),
            name = paste0('nonin','.csv'),
-           parentId = 'syn11968320')
+           parentId = 'syn22268519')
 obj = synStore(obj,  used = crf.tableId, executed = thisFile)
 
 # Write Phone data to Synapse
 write.csv(phone.hr.tbl,file = paste0('crf_phone','.csv'),na="")
 obj = File(paste0('crf_phone','.csv'),
            name = paste0('crf_phone','.csv'),
-           parentId = 'syn11968320')
+           parentId = 'syn22268519')
 obj = synStore(obj,  used = phone.tableId, executed = thisFile)
 
 # Write Merged data to Synapse
 write.csv(merged.tbl,file = paste0('merged_crf_nonin','.csv'),na="")
 obj = File(paste0('merged_crf_nonin','.csv'),
            name = paste0('merged_crf_nonin','.csv'),
-           parentId = 'syn12435196')
+           parentId = 'syn22268519')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 
 # Write Estimated FitzPatrick scales to Synapse
 write.csv(est.fitz.tbl,file = paste0('est_fitzpatrick','.csv'),na="")
 obj = File(paste0('est_fitzpatrick','.csv'),
            name = paste0('est_fitzpatrick','.csv'),
-           parentId = 'syn12435196')
+           parentId = 'syn22268519')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 

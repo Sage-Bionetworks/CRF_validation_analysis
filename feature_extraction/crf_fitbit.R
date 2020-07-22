@@ -25,8 +25,8 @@ synLogin()
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #############
 # Download fitbit data from Synapse
-tableId = 'syn11673533'
-name = 'HeartRate activities heart intraday'
+tableId = 'syn22254943'
+name = 'Fitbit Heart rate intraday'
 
 all.used.ids = tableId # provenance tracking
 columnsToSelect = c('healthCode','createdDate','dataset','datasetInterval','datasetType')
@@ -51,12 +51,12 @@ fitbit.table.meta = data.table::rbindlist(list(fitbit.tbl %>%
   dplyr::rename('fitbitCreatedDate' = 'createdDate')
 
 # SynIds and names of reference tables 
-ref.details <- data.frame(tableId = c('syn11665074',
-                                      'syn11580624',
-                                      'syn11432994'),
-                          name = c('Cardio 12MT-v5',
-                                   'Cardio Stress Test-v1',
-                                   'Cardio Stair Step-v1'))
+ref.details <- data.frame(tableId = c('syn22254983',
+                                      'syn22119505',
+                                      'syn22254980'),
+                          name = c('12-MRT',
+                                   'Cardio Stress Test',
+                                   '3-MST'))
 
 # Create a fitbit table tailored for each reference table
 for (i in seq(nrow(ref.details))){

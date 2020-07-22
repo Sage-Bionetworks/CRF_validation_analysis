@@ -110,6 +110,8 @@ for (i in seq(nrow(ref.details))){
   name = as.character(ref.details$name[i])
   tableId = as.character(ref.details$tableId[i])
   
+  print(name)
+  
   all.used.ids = tableId # provenance tracking
   
   columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json',
@@ -159,7 +161,6 @@ for (i in seq(nrow(ref.details))){
     # dplyr::rename('recordId' = '.id') %>% 
     dplyr::select(recordId, startTime, stopTime, tag) %>% 
     dplyr::mutate(Assay = 'before')
-  
   hr.after.times <- apply(hr.table.meta,1,function(x){ 
     tryCatch({getStartAndStopTime(x, 'after')},
              error = function(e){ NA })

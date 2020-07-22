@@ -114,7 +114,7 @@ for (i in seq(nrow(ref.details))){
   
   columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json',
                         'heartRate_before_motion.json','heartRate_after_motion.json') 
-  columnsToSelect = c('recordId', 'healthCode','externalId','dataGroups','appVersion','createdOn',
+  columnsToSelect = c('recordId', 'healthCode','appVersion','createdOn',
                       'createdOnTimeZone','phoneInfo','metadata.startDate','metadata.endDate',
                       'heartRate_before_recorder.json','heartRate_after_recorder.json',
                       'heartRate_before_motion.json','heartRate_after_motion.json') 
@@ -143,9 +143,9 @@ for (i in seq(nrow(ref.details))){
                                           use.names = T, fill = T) %>% as.data.frame()
   }
   
-  # Subset to PMI Ids
-  hr.table.meta <- hr.table.meta[grep('PMI', hr.table.meta$externalId),]
-  rownames(hr.table.meta) <- hr.table.meta$recordId
+  # Subset to PMI Ids (already done at the raw data tables)
+  # hr.table.meta <- hr.table.meta[grep('PMI', hr.table.meta$externalId),]
+  # rownames(hr.table.meta) <- hr.table.meta$recordId
   hr.table.meta$originalTable = rep(tableId, nrow(hr.table.meta))
   
   #############
@@ -258,8 +258,8 @@ for (i in seq(nrow(ref.details))){
     dplyr::left_join(hr.table.meta) %>% 
     dplyr::select(recordId,
                   healthCode,
-                  externalId,
-                  dataGroups,
+                  # externalId,
+                  # dataGroups,
                   metadata.startDate,
                   metadata.endDate,
                   originalTable,

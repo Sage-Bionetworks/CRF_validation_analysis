@@ -152,6 +152,6 @@ for (i in seq(nrow(ref.details))){
   write.csv(fitbit.hr.tbl,file = paste0('fitbit',ref.name,'.csv'),na="")
   obj = File(paste0('fitbit',ref.name,'.csv'), 
              name = paste0('fitbit',ref.name,'.csv'), 
-             parentId = 'syn11968320')
+             parentId = 'syn22268519')
   obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 }

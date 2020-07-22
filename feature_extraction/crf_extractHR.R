@@ -104,11 +104,11 @@ ref.details <- data.frame(tableId = c('syn22254983',
                                    '3-MST'))
 
 # Create a hr table tailored for each reference table
-for (i in seq(nrow(ref.details))){
+for (iTbl in seq(nrow(ref.details))){
   
   # ref details from ref.details dataframe
-  name = as.character(ref.details$name[i])
-  tableId = as.character(ref.details$tableId[i])
+  name = as.character(ref.details$name[iTbl])
+  tableId = as.character(ref.details$tableId[iTbl])
   
   print(name)
   

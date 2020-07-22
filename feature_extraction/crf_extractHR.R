@@ -155,8 +155,8 @@ for (i in seq(nrow(ref.details))){
     tryCatch({getStartAndStopTime(x,'before')},
              error = function(e){ NA })
   }) %>%
-    plyr::ldply(data.frame) %>% 
-    dplyr::rename('recordId' = '.id') %>% 
+    plyr::ldply(data.frame, .id = 'recordId') %>% 
+    # dplyr::rename('recordId' = '.id') %>% 
     dplyr::select(recordId, startTime, stopTime, tag) %>% 
     dplyr::mutate(Assay = 'before')
   
@@ -164,8 +164,8 @@ for (i in seq(nrow(ref.details))){
     tryCatch({getStartAndStopTime(x, 'after')},
              error = function(e){ NA })
   }) %>%
-    plyr::ldply(data.frame) %>% 
-    dplyr::rename('recordId' = '.id') %>% 
+    plyr::ldply(data.frame, .id = 'recordId') %>% 
+    # dplyr::rename('recordId' = '.id') %>% 
     dplyr::select(recordId, startTime, stopTime, tag) %>% 
     dplyr::mutate(Assay = 'after')
   

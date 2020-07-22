@@ -83,7 +83,7 @@ for(i in seq(nrow(ref.details))){
   ref.tbl.syn <- synTableQuery(paste('select * from', ref.tableId))
   ref.tbl <- ref.tbl.syn$asDataFrame()
   ref.tbl <- ref.tbl %>%
-    dplyr::left_join(baseline.tbl) %>% 
+    dplyr::left_join(baseline.tbl %>% dplyr::select(healthCode, externalId) %>% unique()) %>% 
     dplyr::select(recordId, healthCode, externalId, createdOn, createdOnTimeZone) %>% 
     dplyr::mutate(createdDate = as.character(as.Date.character(createdOn))) %>%
     unique()

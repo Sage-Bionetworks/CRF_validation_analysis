@@ -25,7 +25,7 @@ synLogin()
 #############
 # Download polar data from Synapse and figure out filepath locations
 #############
-polar.syn.id <- 'syn16805791'
+polar.syn.id <- 'syn22125134'
 polar.syn <- synGet(polar.syn.id)
 # Get file path locations after unzipping the zip file
 polar.files <- unzip(polar.syn$path) 
@@ -62,12 +62,12 @@ for(file.i in polar.files){
 polar_data$date <- as.character(as.Date.character(polar_data$date, format = '%d-%m-%Y'))
 
 # SynIds and names of reference tables 
-ref.details <- data.frame(tableId = c('syn11665074',
-                                      'syn11580624',
-                                      'syn11432994'),
-                          name = c('Cardio 12MT-v5',
-                                   'Cardio Stress Test-v1',
-                                   'Cardio Stair Step-v1'))
+ref.details <- data.frame(tableId = c('syn22254983',
+                                      'syn22119505',
+                                      'syn22254980'),
+                          name = c('12-MRT',
+                                   'Cardio Stress Test',
+                                   '3-MST'))
 
 # Create a polar table tailored for each reference table
 for(i in seq(nrow(ref.details))){
@@ -151,6 +151,6 @@ for(i in seq(nrow(ref.details))){
   write.csv(polar_data,file = paste0('polar ', ref.name,'.csv'),na="")
   obj = File(paste0('polar ', ref.name, '.csv'), 
              name = paste0('polar', ref.name, '.csv'), 
-             parentId = 'syn16805789')
+             parentId = 'syn22125127')
   obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 }

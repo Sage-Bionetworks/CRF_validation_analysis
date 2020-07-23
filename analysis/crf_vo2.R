@@ -152,20 +152,20 @@ estimateVo2 <- function(pdat){
 # Download processes Synapse tables and excel files
 #############
 # Metadata containing V02 max values, weights etc.,
-metadata.id = 'syn12257142'
+metadata.id = 'syn22268523'
 pmi.metadata <- readxl::read_xlsx(synapser::synGet(metadata.id)$path) %>%
   dplyr::rename('externalId' = 'CRF User name') %>% 
   dplyr::mutate('inClinic' = TRUE)
 all.used.ids <- c(metadata.id)
 
 # merged table containing polar, fitbit and crf heart rate values
-merged.stair.tableId = 'syn12612345'
+merged.stair.tableId = 'syn22269495'
 merged.stair.tbl <- read.csv(synapser::synGet(merged.stair.tableId)$path, stringsAsFactors = F) %>% 
   dplyr::select(-X)
 all.used.ids <- c(all.used.ids, merged.stair.tableId)
 
 # Stair step test start and stop times
-stair.times.tableId = 'syn12673572'
+stair.times.tableId = 'syn22269994'
 stair.times.tbl <- read.csv(synapser::synGet(stair.times.tableId)$path, stringsAsFactors = F) %>% 
   dplyr::select(-X)
 all.used.ids <- c(all.used.ids, stair.times.tableId)
@@ -241,5 +241,5 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 write.csv(vo2.estiamtes.tbl,file = paste0('tecumseh_vo2_estimates','.csv'),na="")
 obj = File(paste0('tecumseh_vo2_estimates','.csv'),
            name = paste0('tecumseh_vo2_estimates','.csv'),
-           parentId = 'syn12435196')
+           parentId = 'syn22268520')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)

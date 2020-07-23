@@ -147,7 +147,7 @@ for (iTbl in seq(nrow(ref.details))){
   
   # Subset to PMI Ids (already done at the raw data tables)
   # hr.table.meta <- hr.table.meta[grep('PMI', hr.table.meta$externalId),]
-  # rownames(hr.table.meta) <- hr.table.meta$recordId
+  rownames(hr.table.meta) <- hr.table.meta$recordId
   hr.table.meta$originalTable = rep(tableId, nrow(hr.table.meta))
   
   #############
@@ -157,16 +157,16 @@ for (iTbl in seq(nrow(ref.details))){
     tryCatch({getStartAndStopTime(x,'before')},
              error = function(e){ NA })
   }) %>%
-    plyr::ldply(data.frame, .id = 'recordId') %>% 
-    # dplyr::rename('recordId' = '.id') %>% 
+    plyr::ldply(data.frame) %>% 
+    dplyr::rename('recordId' = '.id') %>%
     dplyr::select(recordId, startTime, stopTime, tag) %>% 
     dplyr::mutate(Assay = 'before')
   hr.after.times <- apply(hr.table.meta,1,function(x){ 
     tryCatch({getStartAndStopTime(x, 'after')},
              error = function(e){ NA })
   }) %>%
-    plyr::ldply(data.frame, .id = 'recordId') %>% 
-    # dplyr::rename('recordId' = '.id') %>% 
+    plyr::ldply(data.frame) %>% 
+    dplyr::rename('recordId' = '.id') %>%
     dplyr::select(recordId, startTime, stopTime, tag) %>% 
     dplyr::mutate(Assay = 'after')
   

@@ -22,21 +22,21 @@ synLogin()
 
 ## Download both tables crf and fitbit
 # SynIds and names of reference tables 
-ref.details <- data.frame(crf_tableId = c('syn12010238',
-                                          'syn12010132',
-                                          'syn12010237'),
-                          main_tableId = c('syn11665074',
-                                           'syn11432994',
-                                           'syn11580624'),
-                          fitbit_tableId = c('syn12550816',
-                                             'syn12550818',
-                                             'syn12550817'),
-                          polar_tableId = c('syn16811362',
-                                            'syn16811501',
-                                            'syn16811363'),
-                          name = c('Cardio 12MT-v5',
-                                   'Cardio Stair Step-v1',
-                                   'Cardio Stress Test-v1'), 
+ref.details <- data.frame(crf_tableId = c('syn22269158',
+                                          'syn22269166',
+                                          'syn22269160'),
+                          main_tableId = c('syn22254983',
+                                           'syn22254980',
+                                           'syn22119505'),
+                          fitbit_tableId = c('syn22269077',
+                                             'syn22269079',
+                                             'syn22269078'),
+                          polar_tableId = c('syn22268504',
+                                            'syn22268506',
+                                            'syn22268505'),
+                          name = c('12-MRT',
+                                   'Cardio Stress Test',
+                                   '3-MST'), 
                           stringsAsFactors = F)
 
 for(i in 1:nrow(ref.details)){
@@ -121,6 +121,6 @@ for(i in 1:nrow(ref.details)){
   write.csv(merged.tbl,file = paste0('merged',name,'.csv'),na="")
   obj = File(paste0('merged',name,'.csv'), 
              name = paste0('merged',name,'.csv'), 
-             parentId = 'syn11968320')
+             parentId = 'syn22268519')
   obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 }

@@ -170,14 +170,23 @@ stair.times.tbl <- read.csv(synapser::synGet(stair.times.tableId)$path, stringsA
   dplyr::select(-X)
 all.used.ids <- c(all.used.ids, stair.times.tableId)
 
+# PMI Id to healthCode from Baseline Characteristics
+baseline.char.id = 'syn22254979'
+baseline.char.tbl <- synapser::synTableQuery('SELECT * FROM syn22254979')$asDataFrame() %>% 
+  dplyr::select(externalId = participantId,
+                healthCode) %>% 
+  unique()
+all.used.ids <- c(all.used.ids, baseline.char.id)
+
 # Get vo2 max tbl with all the required variables
 vo2.tbl <- merged.stair.tbl %>%
-  dplyr::select(recordId, healthCode, externalId, 
+  dplyr::select(recordId, healthCode, 
                 samplingRate, redHR, redConf,
                 greenHR, greenConf, blueHR, blueConf, Assay,
                 window, startTime, stopTime,
                 fitbit.timestamp, fitbit.hr,
                 polar.timestamp, polar.hr) %>% 
+  dplyr::left_join(baseline.char.tbl) %>% 
   dplyr::left_join(stair.times.tbl) %>%
   dplyr::inner_join(pmi.metadata %>%
                       dplyr::select('externalId','Sex','Age','Field Day Wt (kg)')) %>% 

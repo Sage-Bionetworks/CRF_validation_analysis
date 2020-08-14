@@ -159,7 +159,7 @@ pmi.metadata <- readxl::read_xlsx(synapser::synGet(metadata.id)$path) %>%
 all.used.ids <- c(metadata.id)
 
 # merged table containing polar, fitbit and crf heart rate values
-merged.stair.tableId = 'syn22269495'
+merged.stair.tableId = 'syn22269494'
 merged.stair.tbl <- read.csv(synapser::synGet(merged.stair.tableId)$path, stringsAsFactors = F) %>% 
   dplyr::select(-X)
 all.used.ids <- c(all.used.ids, merged.stair.tableId)

@@ -35,8 +35,8 @@ ref.details <- data.frame(crf_tableId = c('syn22269158',
                                             'syn22268506',
                                             'syn22268505'),
                           name = c('12-MRT',
-                                   'Cardio Stress Test',
-                                   '3-MST'), 
+                                   '3-MST',
+                                   'Cardio Stress Test'), 
                           stringsAsFactors = F)
 
 for(i in 1:nrow(ref.details)){

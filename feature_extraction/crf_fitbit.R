@@ -29,7 +29,7 @@ tableId = 'syn22254943'
 name = 'Fitbit Heart rate intraday'
 
 all.used.ids = tableId # provenance tracking
-columnsToSelect = c('healthCode','createdDate','dataset','datasetInterval','datasetType')
+columnsToSelect = c('participantID','createdDate','dataset','datasetInterval','datasetType')
 columnsToDownload = c('dataset')
 
 fitbit.tbl.syn = synTableQuery(paste('select * from', tableId))
@@ -69,41 +69,41 @@ for (i in seq(nrow(ref.details))){
   ref.tbl.syn <- synTableQuery(paste('select * from', ref.tableId))
   ref.tbl <- ref.tbl.syn$asDataFrame()
   ref.tbl <- ref.tbl %>%
-    dplyr::select(recordId, healthCode, createdOn, createdOnTimeZone) %>% 
+    dplyr::select(recordId, participantID, createdOn, createdOnTimeZone) %>% 
     dplyr::mutate(createdDate = as.character(as.Date.character(createdOn))) %>%
     unique()
   
   all.used.ids = c(tableId,ref.tableId) # provenance tracking
   
-  # Find healthCodes and timezones they are in
+  # Find participantIDs and timezones they are in
   hc.timezone.tbl <- ref.tbl %>% 
-    dplyr::select(healthCode, createdOnTimeZone) %>%
+    dplyr::select(participantID, createdOnTimeZone) %>%
     unique()
   
-  # Let us first consider healthCodes that have only one time zone, we will deal with healthCode having
+  # Let us first consider participantIDs that have only one time zone, we will deal with participantID having
   # multiple timezones later
   
   # One time zone
   a <- hc.timezone.tbl %>%
-    dplyr::group_by(healthCode) %>% 
+    dplyr::group_by(participantID) %>% 
     dplyr::count() %>% 
     dplyr::filter(n == 1)
   
   # Multiple time zones
   b <- hc.timezone.tbl %>%
-    dplyr::group_by(healthCode) %>% 
+    dplyr::group_by(participantID) %>% 
     dplyr::count() %>% 
     dplyr::filter(n > 1)
   
-  # Subset healthCodes to healthCodes in one timezone
+  # Subset participantIDs to participantIDs in one timezone
   hc.timezone.tbl.monoTimeZone  <- hc.timezone.tbl %>%
-    dplyr::filter(healthCode %in% a$healthCode) %>% 
+    dplyr::filter(participantID %in% a$participantID) %>% 
     unique()
   
-  # Subset healthCodes to healthCodes in multiple timezones
+  # Subset participantIDs to participantIDs in multiple timezones
   hc.timezone.tbl.multTimeZone <- ref.tbl %>%
-    dplyr::select(healthCode, createdOnTimeZone, createdDate) %>% 
-    dplyr::filter(healthCode %in% b$healthCode) %>% 
+    dplyr::select(participantID, createdOnTimeZone, createdDate) %>% 
+    dplyr::filter(participantID %in% b$participantID) %>% 
     unique() %>% 
     dplyr::rename('fitbitCreatedDate' = 'createdDate')
   
@@ -113,24 +113,24 @@ for (i in seq(nrow(ref.details))){
     unique()
   
   # Multiple timezones, here we will consider createdOn date from the fitbit table, and from the activity table
-  # to break ties in timezones for a healthCode
+  # to break ties in timezones for a participantID
   fitbit.common.ref.multTimeZone <- fitbit.table.meta %>%
     dplyr::inner_join(hc.timezone.tbl.multTimeZone) %>%
     unique()
   
-  # Get merged common table for all healthCodes
+  # Get merged common table for all participantIDs
   fitbit.common.ref <- rbind(fitbit.common.ref.monoTimeZone,
                              fitbit.common.ref.multTimeZone)
   
   fitbit.hr.tbl <- apply(fitbit.common.ref,1,function(x){ 
     tryCatch({dat <- jsonlite::fromJSON(as.character(x['dataset.fileLocation']))
     # dat <- dat %>% dplyr::mutate(recordId = x['recordId'])
-    dat <- dat %>% dplyr::mutate(healthCode = x['healthCode'])
+    dat <- dat %>% dplyr::mutate(participantID = x['participantID'])
     dat <- dat %>% dplyr::mutate(fitbitCreatedDate = x['fitbitCreatedDate'])
     dat <- dat %>% dplyr::mutate(createdOnTimeZone = x['createdOnTimeZone'])
     },
     error = function(e){ NA })
-  }) %>% plyr::ldply(data.frame) %>% dplyr::select(time, value, healthCode, fitbitCreatedDate, createdOnTimeZone) %>%
+  }) %>% plyr::ldply(data.frame) %>% dplyr::select(time, value, participantID, fitbitCreatedDate, createdOnTimeZone) %>%
     dplyr::rename('fitbitHR' = 'value') %>% na.omit() %>% unique()
   
   # Merge createdDate and time to create a timestamp and convert that into POSIXlt format

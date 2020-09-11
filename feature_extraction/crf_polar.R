@@ -35,7 +35,7 @@ polar_data <- NULL
 
 for(file.i in polar.files){
   
-  # For externalId
+  # For participantID
   a0 <- stringr::str_split(file.i, '/') %>% 
     unlist()
   a0 <- a0[length(a0)]
@@ -54,7 +54,7 @@ for(file.i in polar.files){
                   'date' = 'Date',
                   'start.time' = 'Start.time',
                   'duration' = 'Duration') %>% 
-    dplyr::mutate(externalId = current_external_id)
+    dplyr::mutate(participantID = current_external_id)
   polar_data <- rbind(polar_data, cbind(a1,a2)) 
 }
 
@@ -69,9 +69,6 @@ ref.details <- data.frame(tableId = c('syn22254983',
                                    'Cardio Stress Test',
                                    '3-MST'))
 
-baseline.tbl <- synTableQuery(paste('select * from', 'syn22254979'))$asDataFrame() %>% 
-  dplyr::rename(externalId = participantId)
-
 # Create a polar table tailored for each reference table
 for(i in seq(nrow(ref.details))){
   
@@ -83,42 +80,41 @@ for(i in seq(nrow(ref.details))){
   ref.tbl.syn <- synTableQuery(paste('select * from', ref.tableId))
   ref.tbl <- ref.tbl.syn$asDataFrame()
   ref.tbl <- ref.tbl %>%
-    dplyr::left_join(baseline.tbl %>% dplyr::select(healthCode, externalId) %>% unique()) %>% 
-    dplyr::select(recordId, healthCode, externalId, createdOn, createdOnTimeZone) %>% 
+    dplyr::select(recordId, participantID, createdOn, createdOnTimeZone) %>% 
     dplyr::mutate(createdDate = as.character(as.Date.character(createdOn))) %>%
     unique()
   
   all.used.ids = c(polar.syn.id,ref.tableId, 'syn22254979') # provenance tracking
   
-  # Find healthCodes and timezones they are in
+  # Find participantIDs and timezones they are in
   hc.timezone.tbl <- ref.tbl %>% 
-    dplyr::select(healthCode, createdOnTimeZone, externalId) %>%
+    dplyr::select(participantID, createdOnTimeZone) %>%
     unique()
   
-  # Let us first consider healthCodes that have only one time zone, we will deal with healthCode having
+  # Let us first consider participantIDs that have only one time zone, we will deal with participantID having
   # multiple timezones later
   
   # One time zone
   a <- hc.timezone.tbl %>%
-    dplyr::group_by(healthCode) %>% 
+    dplyr::group_by(participantID) %>% 
     dplyr::count() %>% 
     dplyr::filter(n == 1)
   
   # Multiple time zones
   b <- hc.timezone.tbl %>%
-    dplyr::group_by(healthCode) %>% 
+    dplyr::group_by(participantID) %>% 
     dplyr::count() %>% 
     dplyr::filter(n > 1)
   
-  # Subset healthCodes to healthCodes in one timezone
+  # Subset participantIDs to participantIDs in one timezone
   hc.timezone.tbl.monoTimeZone  <- hc.timezone.tbl %>%
-    dplyr::filter(healthCode %in% a$healthCode) %>% 
+    dplyr::filter(participantID %in% a$participantID) %>% 
     unique()
   
-  # Subset healthCodes to healthCodes in multiple timezones
+  # Subset participantIDs to participantIDs in multiple timezones
   hc.timezone.tbl.multTimeZone <- ref.tbl %>%
-    dplyr::select(healthCode, createdOnTimeZone, createdDate, externalId) %>% 
-    dplyr::filter(healthCode %in% b$healthCode) %>% 
+    dplyr::select(participantID, createdOnTimeZone, createdDate) %>% 
+    dplyr::filter(participantID %in% b$participantID) %>% 
     unique() %>% 
     dplyr::rename('date' = 'createdDate')
   
@@ -127,11 +123,11 @@ for(i in seq(nrow(ref.details))){
     dplyr::inner_join(hc.timezone.tbl.monoTimeZone)
   
   # Multiple timezones, here we will consider createdOn date from the fitbit table, and from the activity table
-  # to break ties in timezones for a healthCode
+  # to break ties in timezones for a participantID
   polar_data_multTimeZone <- polar_data %>% 
     dplyr::inner_join(hc.timezone.tbl.multTimeZone)
   
-  # Get the updated polar data that has timezone for all healthCodes
+  # Get the updated polar data that has timezone for all participantIDs
   polar_data <- rbind(polar_data_monoTimeZone, polar_data_multTimeZone)
   
   # Correct the times for the timezone

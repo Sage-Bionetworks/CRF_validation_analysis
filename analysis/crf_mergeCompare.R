@@ -67,8 +67,7 @@ for(i in 1:nrow(ref.details)){
   crf.tbl$startTime <- strptime(crf.tbl$startTime, format = '%Y-%m-%d %H:%M:%S',tz='') %>% as.POSIXct()
   crf.tbl$stopTime <- strptime(crf.tbl$stopTime, format = '%Y-%m-%d %H:%M:%S',tz='') %>% as.POSIXct()
   polar.tbl$timestamp <- strptime(polar.tbl$timestamp, format = '%Y-%m-%d %H:%M:%S',tz='') %>% as.POSIXct()
-  polar.tbl$externalId <- as.character(polar.tbl$externalId)
-  
+
   # Merge crf, fitbit and polar data
   merged.tbl <- apply(crf.tbl,1,function(x){ 
     tryCatch({

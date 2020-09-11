@@ -51,7 +51,6 @@ for(i in 1:nrow(ref.details)){
   # Download the tables from synapse
   crf.tbl <- read.csv(synapser::synGet(crf.tableId)$path) %>% dplyr::select(-X)
   main.tbl <- synapser::synTableQuery(paste('select * from', main.tableId)) %>% as.data.frame()
-  # main.tbl <- main.tbl[grep('PMI', main.tbl$externalId),]
   fitbit.tbl <- read.csv(synapser::synGet(fitbit.tableId)$path) %>% dplyr::select(-X)
   polar.tbl <- read.csv(synapser::synGet(polar.tableId)$path) %>% dplyr::select(-X)
   all.used.ids <- c(crf.tableId, fitbit.tableId, polar.tableId) # provenance tracking
@@ -77,7 +76,7 @@ for(i in 1:nrow(ref.details)){
       ## fitbit
       # Pick all data that lies in the given window
       fitbit.data <- fitbit.tbl %>%
-        dplyr::filter(healthCode == x['healthCode']) %>% 
+        dplyr::filter(participantID == x['participantID']) %>% 
         dplyr::filter(timestamp <= x['stopTime']) %>%
         dplyr::filter(timestamp >= x['startTime'])
       
@@ -87,7 +86,7 @@ for(i in 1:nrow(ref.details)){
       
       ## polar
       polar.data <- polar.tbl %>%
-        dplyr::filter(healthCode == x['healthCode']) %>%
+        dplyr::filter(participantID == x['participantID']) %>%
         dplyr::filter(timestamp <= x['stopTime']) %>%
         dplyr::filter(timestamp >= x['startTime'])
       

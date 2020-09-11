@@ -116,7 +116,7 @@ for (iTbl in seq(nrow(ref.details))){
   
   columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json',
                         'heartRate_before_motion.json','heartRate_after_motion.json') 
-  columnsToSelect = c('recordId', 'healthCode','appVersion','createdOn',
+  columnsToSelect = c('recordId', 'participantID','appVersion','createdOn',
                       'createdOnTimeZone','phoneInfo','metadata.startDate','metadata.endDate',
                       'heartRate_before_recorder.json','heartRate_after_recorder.json',
                       'heartRate_before_motion.json','heartRate_after_motion.json') 
@@ -258,9 +258,7 @@ for (iTbl in seq(nrow(ref.details))){
     dplyr::left_join(hr.times) %>% 
     dplyr::left_join(hr.table.meta) %>% 
     dplyr::select(recordId,
-                  healthCode,
-                  # externalId,
-                  # dataGroups,
+                  participantID,
                   metadata.startDate,
                   metadata.endDate,
                   originalTable,

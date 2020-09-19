@@ -7,6 +7,9 @@
 rm(list=ls())
 gc()
 devtools::install_github('itismeghasyam/mhealthtools@crfAppVersion')
+options(digits.secs = 0)
+#resolution to seconds
+
 
 ##############
 # Required libraries
@@ -85,7 +88,7 @@ name = '3-MST'
 
 all.used.ids = tableId
 columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json','stairStep_motion.json') # For Cardio 12MT
-columnsToSelect = c('recordId', 'healthCode','appVersion','createdOn',
+columnsToSelect = c('recordId', 'participantID','appVersion','createdOn',
                     'createdOnTimeZone','phoneInfo','metadata.startDate','metadata.endDate',
                     'heartRate_before_recorder.json','heartRate_after_recorder.json','stairStep_motion.json') # For Cardio 12MT
 hr.tbl.syn = synTableQuery(paste("select * from ", tableId))

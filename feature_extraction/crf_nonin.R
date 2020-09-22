@@ -101,7 +101,7 @@ getHRdataframe <- function(hr.json.fileLocation, window_length_ = 10,
     hr.data$timestamp <- hr.data$timestamp - min(hr.data$timestamp, na.rm = T)
     hr.data$t <- hr.data$timestamp
     
-    if(hr.json.fileLocation == './cameraHeartRate_recorder.json'){
+    if(grepl('cameraHeartRate_recorder.json', hr.json.fileLocation)){
       tag <- 'android'
     }else{
       tag <- 'iPhone'
@@ -202,8 +202,8 @@ deMystifyITA <- function(ITA){
 #######################################
 ## CRF Validation Data (Nonin and the SpectroColorimeter readings) filepaths
 
-crf.tableId = 'syn17009128'
-name = 'CRF_HR_validation_questions'
+crf.tableId = 'syn22268058'
+name = 'Baseline and PulseOx - Calibration'
 
 all.used.ids = crf.tableId # provenance tracking
 columnsToDownload = c('iPhone SE Nonin File','iPhone 8+ Nonin file','iPhone XS Nonin File',
@@ -211,8 +211,7 @@ columnsToDownload = c('iPhone SE Nonin File','iPhone 8+ Nonin file','iPhone XS N
                       'Huawei Mate SE Nonin File','LG Stylo 4 Nonin File',
                       'Samsung Galaxy S9+ Nonin File') 
 crf.validation.tbl.syn = synTableQuery(paste('select * from', crf.tableId))
-crf.validation.tbl <- crf.validation.tbl.syn$asDataFrame() %>%
-  dplyr::filter(`Participant ID` > 1200)
+crf.validation.tbl <- crf.validation.tbl.syn$asDataFrame() 
 
 nonin.json.loc = lapply(columnsToDownload, function(col.name){
   tbl.files = synDownloadTableColumns(crf.validation.tbl.syn, col.name) %>%
@@ -242,39 +241,44 @@ for(i in seq(2,length(columnsToDownload))){
 
 ## Phone Camera Json data filepaths
 
-phone.tableId = 'syn17007713'
-name = 'HeartRate Measurement-v8'
+phone.tableId = 'syn22268054'
+name = 'HeartRate Measurement - Calibration'
 
 all.used.ids <- c(all.used.ids, phone.tableId)
 hr.tbl.syn <- synTableQuery(paste("select * from ", phone.tableId))
-hr.tbl <- hr.tbl.syn$asDataFrame() %>%
-  dplyr::filter(answers.participantID %in% crf.validation.table.meta$`Participant ID`) %>% 
-  dplyr::filter(answers.participantID > 1200) # our participantsIDs are 12xx, 34xx and 56xx
+hr.tbl <- hr.tbl.syn$asDataFrame() 
 
-columnsToDownload = c('rawData')
-# columnsToSelect = c('recordId', 'healthCode','rawData','phoneInfo','createdOn', 'createdOnTimeZone') 
+columnsToDownload = c('cameraHeartRate_recorder.json',
+                      'cameraHeartRate_rgb.json')
 
 hr.json.loc = lapply(columnsToDownload, function(col.name){
   tbl.files = synDownloadTableColumns(hr.tbl.syn, col.name) %>%
     lapply(function(x) data.frame(V1 = x)) %>% 
     data.table::rbindlist(idcol = col.name) %>% 
-    plyr::rename(c('V1' = gsub('Data','.fileLocation', col.name)))
+    plyr::rename(c('V1' = gsub('.json','.fileLocation', col.name)))
 })
 
-hr.tbl$rawData <- as.character(hr.tbl$rawData)
 hr.table.meta = data.table::rbindlist(list(hr.tbl %>%
                                              left_join(do.call(cbind, hr.json.loc[1]))),
                                       use.names = T, fill = T)%>%as.data.frame
 
+for(i in seq(2,length(columnsToDownload))){
+  hr.table.meta = data.table::rbindlist(list(hr.table.meta %>%
+                                               left_join(do.call(cbind, hr.json.loc[i]))),
+                                        use.names = T, fill = T) %>% as.data.frame()
+}
+
+
 # Get createdOn date and timezone for each participant, for adjusting Nonin 
 # data later on
 createdon.tbl <- hr.table.meta %>%
-  dplyr::select(answers.participantID, createdOn, createdOnTimeZone) %>% 
+  dplyr::select(participantID, createdOn, createdOnTimeZone) %>% 
   dplyr::mutate(createdOnDate = as.Date(createdOn)) %>% 
-  dplyr::select(createdOnDate, createdOnTimeZone,
-                `Participant ID` = answers.participantID) %>% 
+  dplyr::select(createdOnDate, createdOnTimeZone, participantID) %>% 
   unique()
-createdon.tbl$`Participant ID` <- as.numeric(createdon.tbl$`Participant ID`)
+
+createdon.tbl$participantID <- as.numeric(createdon.tbl$participantID)
+
 crf.validation.table.meta <- crf.validation.table.meta %>% 
   dplyr::left_join(createdon.tbl)
 
@@ -323,7 +327,7 @@ nonin.hr.tbl <- apply(crf.validation.table.meta,1,function(x){
                          dat.GalaxyJ7, dat.MotoG6, dat.HuaweiMateSE,
                          dat.LGStylo4, dat.Galaxy9Plus) %>% 
         unique() %>% 
-        dplyr::mutate(participantID = x['Participant ID'],
+        dplyr::mutate(participantID = x['participantID'],
                       createdDate = as.character(x['createdOnDate']),
                       createdOnTimeZone = x['createdOnTimeZone']
                       # createdOnTimeZone = '0'
@@ -357,17 +361,31 @@ nonin.hr.tbl <- apply(crf.validation.table.meta,1,function(x){
 
 phone.hr.tbl <- apply(hr.table.meta,1,function(x){
   tryCatch({
-    hr.json.fileLocation <- tryCatch({
-      rawFiles <- unzip(x['raw.fileLocation'] %>% as.character())
-      rawFiles[which(rawFiles %in% c('./cameraHeartRate_recorder.json',
-                                     './cameraHeartRate_rgb.json'))]
-    },
-    error = function(e){NA}
-    )
+    
+    if(is.na(x['cameraHeartRate_rgb.fileLocation'])){
+      hr.json.fileLocation <- x['cameraHeartRate_recorder.fileLocation']
+    }else{
+      hr.json.fileLocation <- x['cameraHeartRate_rgb.fileLocation']
+    }
+    
+    print(hr.json.fileLocation)
     
     if(is.na(hr.json.fileLocation)){
       hr.results <- getHRdataframe(hr.json.fileLocation, window_length_ = 10,
-                                   window_overlap_ = 0.9, method_ = 'acf') 
+                                   window_overlap_ = 0.9, method_ = 'acf') %>% 
+        dplyr::mutate(phone = deMystifyPhone(x['phoneInfo'] %>% as.character()),
+                      participantID = x['participantID'])
+      hr.results$redHR <- as.numeric(hr.results$redHR)
+      hr.results$greenHR <- as.numeric(hr.results$greenHR)
+      hr.results$blueHR <- as.numeric(hr.results$blueHR)
+      hr.results$redConf <- as.numeric(hr.results$redConf)
+      hr.results$greenConf <- as.numeric(hr.results$greenConf)
+      hr.results$blueConf <- as.numeric(hr.results$blueConf)
+      hr.results$method <- as.character(hr.results$method)
+      hr.results$samplingRate <- as.numeric(hr.results$samplingRate)
+      hr.results$startTime <- as.POSIXct(hr.results$startTime, origin='1970-01-01')
+      hr.results$stopTime <- as.POSIXct(hr.results$stopTime, origin = '1970-01-01')
+      
     }else{
       hr.results.acf <- getHRdataframe(hr.json.fileLocation, window_length_ = 10,
                                        window_overlap_ = 0.9, method_ = 'acf') 
@@ -377,14 +395,16 @@ phone.hr.tbl <- apply(hr.table.meta,1,function(x){
                                         window_overlap_ = 0.9, method_ = 'peak')
       hr.results <- rbind(hr.results.acf, hr.results.psd, hr.results.peak) %>% 
         dplyr::mutate(phone = deMystifyPhone(x['phoneInfo'] %>% as.character()),
-                      participantID = x['answers.participantID'])
-      unlink(rawFiles)
+                      participantID = x['participantID'])
     }
     return(hr.results)
   },
-  error = function(e){hr.results <- getHRdataframe(NA) %>% 
+  error = function(e){
+    print('ran into error')
+    
+    hr.results <- getHRdataframe(NA) %>% 
     dplyr::mutate(phone = deMystifyPhone(x['phoneInfo'] %>% as.character()),
-                  participantID = x['answers.participantID'])
+                  participantID = x['participantID'])
   hr.results$redHR <- as.numeric(hr.results$redHR)
   hr.results$greenHR <- as.numeric(hr.results$greenHR)
   hr.results$blueHR <- as.numeric(hr.results$blueHR)
@@ -397,7 +417,7 @@ phone.hr.tbl <- apply(hr.table.meta,1,function(x){
   hr.results$stopTime <- as.POSIXct(hr.results$stopTime, origin = '1970-01-01')
   return(hr.results)
   })
-}) %>% data.table::rbindlist() %>%
+}) %>% data.table::rbindlist(fill = T) %>%
   as.data.frame() %>%
   unique()
 
@@ -436,7 +456,7 @@ options(digits.secs = 3) # reset the seconds digit resolution
 # Calculate a table of estimated Fitzpatrick scales from Spectrocolorimeter values 
 #######################################
 est.fitz.tbl <- crf.validation.table.meta %>% 
-  dplyr::select(`Participant ID`, `Face L*`, `Face b*`,
+  dplyr::select(participantID, `Face L*`, `Face b*`,
                 `Finger L*`, `Finger b*`, `Eye Color`,
                 `Natural Hair Color`, `Natural Skin Color`,
                 `Celeb Choice - Please select the number that best matches you based on your skin.`) %>% 
@@ -464,27 +484,27 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 write.csv(nonin.hr.tbl,file = paste0('nonin','.csv'),na="")
 obj = File(paste0('nonin','.csv'),
            name = paste0('nonin','.csv'),
-           parentId = 'syn11968320')
+           parentId = 'syn22268519')
 obj = synStore(obj,  used = crf.tableId, executed = thisFile)
 
 # Write Phone data to Synapse
 write.csv(phone.hr.tbl,file = paste0('crf_phone','.csv'),na="")
 obj = File(paste0('crf_phone','.csv'),
            name = paste0('crf_phone','.csv'),
-           parentId = 'syn11968320')
+           parentId = 'syn22268519')
 obj = synStore(obj,  used = phone.tableId, executed = thisFile)
 
 # Write Merged data to Synapse
 write.csv(merged.tbl,file = paste0('merged_crf_nonin','.csv'),na="")
 obj = File(paste0('merged_crf_nonin','.csv'),
            name = paste0('merged_crf_nonin','.csv'),
-           parentId = 'syn12435196')
+           parentId = 'syn22268519')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 
 # Write Estimated FitzPatrick scales to Synapse
 write.csv(est.fitz.tbl,file = paste0('est_fitzpatrick','.csv'),na="")
 obj = File(paste0('est_fitzpatrick','.csv'),
            name = paste0('est_fitzpatrick','.csv'),
-           parentId = 'syn12435196')
+           parentId = 'syn22268519')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 

@@ -91,19 +91,19 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 write.csv(lowpass_filter_params,file = paste0('lowpass_filter_params','.csv'),na="")
 obj = File(paste0('lowpass_filter_params','.csv'), 
            name = paste0('lowpass_filter_params','.csv'), 
-           parentId = 'syn18497861')
+           parentId = 'syn22268507')
 obj = synStore(obj, executed = thisFile)
 
 # highpass filter parameters
 write.csv(highpass_filter_params,file = paste0('highpass_filter_params','.csv'),na="")
 obj = File(paste0('highpass_filter_params','.csv'), 
            name = paste0('highpass_filter_params','.csv'), 
-           parentId = 'syn18497861')
+           parentId = 'syn22268507')
 obj = synStore(obj, executed = thisFile)
 
 # mean centering filter parameters
 write.csv(mean_centering_filter_params,file = paste0('mean_centering_filter_params','.csv'),na="")
 obj = File(paste0('mean_centering_filter_params','.csv'), 
            name = paste0('mean_centering_filter_params','.csv'), 
-           parentId = 'syn18497861')
+           parentId = 'syn22268507')
 obj = synStore(obj, executed = thisFile)

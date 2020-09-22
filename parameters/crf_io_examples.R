@@ -273,17 +273,17 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 # Input - output example JSON
 obj = File('io_examples.json',
            name = 'io_examples.json',
-           parentId = 'syn18497861')
+           parentId = 'syn22268507')
 obj = synStore(obj, executed = thisFile)
 
 # Input - output file for the whole algo (60Hz)
 obj = File('io_examples_whole.json',
            name = 'io_examples_whole.json',
-           parentId = 'syn18497861')
+           parentId = 'syn22268507')
 obj = synStore(obj, executed = thisFile)
 
 # Input - output file for the whole algo (<15Hz)
 obj = File('io_examples_whole_12hz.json',
            name = 'io_examples_whole_12hz.json',
-           parentId = 'syn18497861')
+           parentId = 'syn22268507')
 obj = synStore(obj, executed = thisFile)

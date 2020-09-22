@@ -85,7 +85,7 @@ estimateVo2 <- function(pdat){
   genderIn <- pdat$Gender[1]
   weightIn <- pdat$`Wt (kg)`[1]
   recordIdIn <- pdat$recordId[1]
-  externalIdIn <- pdat$externalId[1]
+  participantIDIn <- pdat$participantID[1]
   
   pdat <- pdat %>% dplyr::ungroup() %>% as.data.frame()
   pdat$startTime[which(pdat$startTime == '')] <- NA
@@ -136,7 +136,7 @@ estimateVo2 <- function(pdat){
     dplyr::ungroup() %>% 
     dplyr::rowwise() %>% 
     dplyr::mutate(recordId = recordIdIn) %>% 
-    dplyr::mutate(externalId = externalIdIn) %>% 
+    dplyr::mutate(participantID = participantIDIn) %>% 
     dplyr::mutate(age = ageIn) %>% 
     dplyr::mutate(gender = genderIn) %>% 
     dplyr::mutate(weight = weightIn) %>% 
@@ -152,35 +152,42 @@ estimateVo2 <- function(pdat){
 # Download processes Synapse tables and excel files
 #############
 # Metadata containing V02 max values, weights etc.,
-metadata.id = 'syn12257142'
+metadata.id = 'syn22268523'
 pmi.metadata <- readxl::read_xlsx(synapser::synGet(metadata.id)$path) %>%
-  dplyr::rename('externalId' = 'CRF User name') %>% 
+  dplyr::rename('participantID' = 'CRF User name') %>% 
   dplyr::mutate('inClinic' = TRUE)
 all.used.ids <- c(metadata.id)
 
 # merged table containing polar, fitbit and crf heart rate values
-merged.stair.tableId = 'syn12612345'
+merged.stair.tableId = 'syn22269494'
 merged.stair.tbl <- read.csv(synapser::synGet(merged.stair.tableId)$path, stringsAsFactors = F) %>% 
   dplyr::select(-X)
 all.used.ids <- c(all.used.ids, merged.stair.tableId)
 
 # Stair step test start and stop times
-stair.times.tableId = 'syn12673572'
+stair.times.tableId = 'syn22269994'
 stair.times.tbl <- read.csv(synapser::synGet(stair.times.tableId)$path, stringsAsFactors = F) %>% 
   dplyr::select(-X)
 all.used.ids <- c(all.used.ids, stair.times.tableId)
 
+# participantID from Baseline Characteristics
+baseline.char.id = 'syn22254979'
+baseline.char.tbl <- synapser::synTableQuery('SELECT * FROM syn22254979')$asDataFrame() %>% 
+  unique()
+all.used.ids <- c(all.used.ids, baseline.char.id)
+
 # Get vo2 max tbl with all the required variables
 vo2.tbl <- merged.stair.tbl %>%
-  dplyr::select(recordId, healthCode, externalId, 
+  dplyr::select(recordId, participantID, 
                 samplingRate, redHR, redConf,
                 greenHR, greenConf, blueHR, blueConf, Assay,
                 window, startTime, stopTime,
                 fitbit.timestamp, fitbit.hr,
                 polar.timestamp, polar.hr) %>% 
+  dplyr::left_join(baseline.char.tbl) %>% 
   dplyr::left_join(stair.times.tbl) %>%
   dplyr::inner_join(pmi.metadata %>%
-                      dplyr::select('externalId','Sex','Age','Field Day Wt (kg)')) %>% 
+                      dplyr::select('participantID','Sex','Age','Field Day Wt (kg)')) %>% 
   dplyr::rename('Gender' = 'Sex',
                 'Wt (kg)' = 'Field Day Wt (kg)')
 
@@ -193,7 +200,7 @@ pmi.metadata$createdDate <- as.Date.POSIXct(pmi.metadata$`Field Date`)
 # Add the inClinic column to see if the test was done in the clinic
 vo2.tbl <- vo2.tbl %>% 
   dplyr::left_join(pmi.metadata %>% 
-                     dplyr::select('createdDate', 'externalId','inClinic')) 
+                     dplyr::select('createdDate', 'participantID','inClinic')) 
 vo2.tbl$inClinic[is.na(vo2.tbl$inClinic)] <- FALSE
 
 # Get estimated HR and confidence per row
@@ -227,7 +234,7 @@ vo2.estiamtes.tbl <- vo2.tbl %>%
   ungroup() %>% 
   as.data.frame() %>% 
   dplyr::left_join(vo2.tbl %>% 
-                     dplyr::select('recordId','createdDate', 'externalId','inClinic')) %>% 
+                     dplyr::select('recordId','createdDate', 'participantID','inClinic')) %>% 
   unique() 
 
 # Github link
@@ -241,5 +248,5 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 write.csv(vo2.estiamtes.tbl,file = paste0('tecumseh_vo2_estimates','.csv'),na="")
 obj = File(paste0('tecumseh_vo2_estimates','.csv'),
            name = paste0('tecumseh_vo2_estimates','.csv'),
-           parentId = 'syn12435196')
+           parentId = 'syn22268520')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)

@@ -7,6 +7,9 @@
 rm(list=ls())
 gc()
 devtools::install_github('itismeghasyam/mhealthtools@crfAppVersion')
+options(digits.secs = 0)
+#resolution to seconds
+
 
 ##############
 # Required libraries
@@ -80,15 +83,15 @@ getStairStartAndStopTime <- function(stairJsonFileLoc){
 #############
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #############
-tableId = 'syn11432994'
-name = 'Cardio Stair Step-v1'
+tableId = 'syn22254980'
+name = '3-MST'
 
 all.used.ids = tableId
 columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json','stairStep_motion.json') # For Cardio 12MT
-columnsToSelect = c('recordId', 'healthCode','externalId','dataGroups','appVersion','createdOn',
+columnsToSelect = c('recordId', 'participantID','appVersion','createdOn',
                     'createdOnTimeZone','phoneInfo','metadata.startDate','metadata.endDate',
                     'heartRate_before_recorder.json','heartRate_after_recorder.json','stairStep_motion.json') # For Cardio 12MT
-hr.tbl.syn = synTableQuery(paste("select * from ", tableId," where externalId like 'PMI%'"))
+hr.tbl.syn = synTableQuery(paste("select * from ", tableId))
 hr.tbl = hr.tbl.syn$asDataFrame() %>%
   dplyr::select(columnsToSelect)  
 
@@ -102,7 +105,7 @@ hr.json.loc = lapply(columnsToDownload, function(col.name){
 
 hr.tbl$heartRate_after_recorder.json <- as.character(hr.tbl$heartRate_after_recorder.json)
 hr.tbl$heartRate_before_recorder.json <- as.character(hr.tbl$heartRate_before_recorder.json)
-hr.table.meta$stairStep_motion.json <- as.character(hr.tbl$stairStep_motion.json)
+hr.tbl$stairStep_motion.json <- as.character(hr.tbl$stairStep_motion.json)
 hr.table.meta = data.table::rbindlist(
   list(hr.tbl %>%
          left_join(do.call(cbind, hr.json.loc))),
@@ -110,7 +113,7 @@ hr.table.meta = data.table::rbindlist(
   as.data.frame
 
 # Subset to PMI Ids
-hr.table.meta <- hr.table.meta[grep('PMI', hr.table.meta$externalId),]
+# hr.table.meta <- hr.table.meta[grep('PMI', hr.table.meta$externalId),]
 rownames(hr.table.meta) <- hr.table.meta$recordId
 hr.table.meta$originalTable = rep(tableId, nrow(hr.table.meta))
 
@@ -137,5 +140,5 @@ thisFile <- getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 write.csv(stair.times,file = paste0('stair_times',name,'.csv'),na="")
 obj = File(paste0('stair_times',name,'.csv'), 
            name = paste0('stair_times',name,'.csv'), 
-           parentId = 'syn11968320')
+           parentId = 'syn22268520')
 obj = synStore(obj,  used = all.used.ids, executed = thisFile)

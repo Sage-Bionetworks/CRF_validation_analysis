@@ -96,25 +96,27 @@ getStartAndStopTime <- function(x, assay){
 # Download Synapse Table, and select and download required columns, figure out filepath locations
 #############
 # SynIds and names of reference tables
-ref.details <- data.frame(tableId = c('syn11665074',
-                                      'syn11580624',
-                                      'syn11432994'),
-                          name = c('Cardio 12MT-v5',
-                                   'Cardio Stress Test-v1',
-                                   'Cardio Stair Step-v1'))
+ref.details <- data.frame(tableId = c('syn22254983',
+                                      'syn22119505',
+                                      'syn22254980'),
+                          name = c('12-MRT',
+                                   'Cardio Stress Test',
+                                   '3-MST'))
 
 # Create a hr table tailored for each reference table
-for (i in seq(nrow(ref.details))){
+for (iTbl in seq(nrow(ref.details))){
   
   # ref details from ref.details dataframe
-  name = as.character(ref.details$name[i])
-  tableId = as.character(ref.details$tableId[i])
+  name = as.character(ref.details$name[iTbl])
+  tableId = as.character(ref.details$tableId[iTbl])
+  
+  print(name)
   
   all.used.ids = tableId # provenance tracking
   
   columnsToDownload = c('heartRate_before_recorder.json','heartRate_after_recorder.json',
                         'heartRate_before_motion.json','heartRate_after_motion.json') 
-  columnsToSelect = c('recordId', 'healthCode','externalId','dataGroups','appVersion','createdOn',
+  columnsToSelect = c('recordId', 'participantID','appVersion','createdOn',
                       'createdOnTimeZone','phoneInfo','metadata.startDate','metadata.endDate',
                       'heartRate_before_recorder.json','heartRate_after_recorder.json',
                       'heartRate_before_motion.json','heartRate_after_motion.json') 
@@ -143,8 +145,8 @@ for (i in seq(nrow(ref.details))){
                                           use.names = T, fill = T) %>% as.data.frame()
   }
   
-  # Subset to PMI Ids
-  hr.table.meta <- hr.table.meta[grep('PMI', hr.table.meta$externalId),]
+  # Subset to PMI Ids (already done at the raw data tables)
+  # hr.table.meta <- hr.table.meta[grep('PMI', hr.table.meta$externalId),]
   rownames(hr.table.meta) <- hr.table.meta$recordId
   hr.table.meta$originalTable = rep(tableId, nrow(hr.table.meta))
   
@@ -156,16 +158,15 @@ for (i in seq(nrow(ref.details))){
              error = function(e){ NA })
   }) %>%
     plyr::ldply(data.frame) %>% 
-    dplyr::rename('recordId' = '.id') %>% 
+    dplyr::rename('recordId' = '.id') %>%
     dplyr::select(recordId, startTime, stopTime, tag) %>% 
     dplyr::mutate(Assay = 'before')
-  
   hr.after.times <- apply(hr.table.meta,1,function(x){ 
     tryCatch({getStartAndStopTime(x, 'after')},
              error = function(e){ NA })
   }) %>%
     plyr::ldply(data.frame) %>% 
-    dplyr::rename('recordId' = '.id') %>% 
+    dplyr::rename('recordId' = '.id') %>%
     dplyr::select(recordId, startTime, stopTime, tag) %>% 
     dplyr::mutate(Assay = 'after')
   
@@ -257,9 +258,7 @@ for (i in seq(nrow(ref.details))){
     dplyr::left_join(hr.times) %>% 
     dplyr::left_join(hr.table.meta) %>% 
     dplyr::select(recordId,
-                  healthCode,
-                  externalId,
-                  dataGroups,
+                  participantID,
                   metadata.startDate,
                   metadata.endDate,
                   originalTable,
@@ -297,6 +296,6 @@ for (i in seq(nrow(ref.details))){
   write.csv(hr.results,file = paste0('hr_results',name,'.csv'),na="")
   obj = File(paste0('hr_results',name,'.csv'),
              name = paste0('hr_results',name,'.csv'),
-             parentId = 'syn11968320')
+             parentId = 'syn22268519')
   obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 }

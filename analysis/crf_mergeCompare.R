@@ -22,21 +22,21 @@ synLogin()
 
 ## Download both tables crf and fitbit
 # SynIds and names of reference tables 
-ref.details <- data.frame(crf_tableId = c('syn12010238',
-                                          'syn12010132',
-                                          'syn12010237'),
-                          main_tableId = c('syn11665074',
-                                           'syn11432994',
-                                           'syn11580624'),
-                          fitbit_tableId = c('syn12550816',
-                                             'syn12550818',
-                                             'syn12550817'),
-                          polar_tableId = c('syn16811362',
-                                            'syn16811501',
-                                            'syn16811363'),
-                          name = c('Cardio 12MT-v5',
-                                   'Cardio Stair Step-v1',
-                                   'Cardio Stress Test-v1'), 
+ref.details <- data.frame(crf_tableId = c('syn22269158',
+                                          'syn22269166',
+                                          'syn22269160'),
+                          main_tableId = c('syn22254983',
+                                           'syn22254980',
+                                           'syn22119505'),
+                          fitbit_tableId = c('syn22269077',
+                                             'syn22269079',
+                                             'syn22269078'),
+                          polar_tableId = c('syn22268504',
+                                            'syn22268506',
+                                            'syn22268505'),
+                          name = c('12-MRT',
+                                   '3-MST',
+                                   'Cardio Stress Test'), 
                           stringsAsFactors = F)
 
 for(i in 1:nrow(ref.details)){
@@ -51,7 +51,6 @@ for(i in 1:nrow(ref.details)){
   # Download the tables from synapse
   crf.tbl <- read.csv(synapser::synGet(crf.tableId)$path) %>% dplyr::select(-X)
   main.tbl <- synapser::synTableQuery(paste('select * from', main.tableId)) %>% as.data.frame()
-  main.tbl <- main.tbl[grep('PMI', main.tbl$externalId),]
   fitbit.tbl <- read.csv(synapser::synGet(fitbit.tableId)$path) %>% dplyr::select(-X)
   polar.tbl <- read.csv(synapser::synGet(polar.tableId)$path) %>% dplyr::select(-X)
   all.used.ids <- c(crf.tableId, fitbit.tableId, polar.tableId) # provenance tracking
@@ -68,8 +67,7 @@ for(i in 1:nrow(ref.details)){
   crf.tbl$startTime <- strptime(crf.tbl$startTime, format = '%Y-%m-%d %H:%M:%S',tz='') %>% as.POSIXct()
   crf.tbl$stopTime <- strptime(crf.tbl$stopTime, format = '%Y-%m-%d %H:%M:%S',tz='') %>% as.POSIXct()
   polar.tbl$timestamp <- strptime(polar.tbl$timestamp, format = '%Y-%m-%d %H:%M:%S',tz='') %>% as.POSIXct()
-  polar.tbl$externalId <- as.character(polar.tbl$externalId)
-  
+
   # Merge crf, fitbit and polar data
   merged.tbl <- apply(crf.tbl,1,function(x){ 
     tryCatch({
@@ -77,7 +75,7 @@ for(i in 1:nrow(ref.details)){
       ## fitbit
       # Pick all data that lies in the given window
       fitbit.data <- fitbit.tbl %>%
-        dplyr::filter(healthCode == x['healthCode']) %>% 
+        dplyr::filter(participantID == x['participantID']) %>% 
         dplyr::filter(timestamp <= x['stopTime']) %>%
         dplyr::filter(timestamp >= x['startTime'])
       
@@ -87,7 +85,7 @@ for(i in 1:nrow(ref.details)){
       
       ## polar
       polar.data <- polar.tbl %>%
-        dplyr::filter(externalId == x['externalId']) %>%
+        dplyr::filter(participantID == x['participantID']) %>%
         dplyr::filter(timestamp <= x['stopTime']) %>%
         dplyr::filter(timestamp >= x['startTime'])
       
@@ -121,6 +119,6 @@ for(i in 1:nrow(ref.details)){
   write.csv(merged.tbl,file = paste0('merged',name,'.csv'),na="")
   obj = File(paste0('merged',name,'.csv'), 
              name = paste0('merged',name,'.csv'), 
-             parentId = 'syn11968320')
+             parentId = 'syn22268519')
   obj = synStore(obj,  used = all.used.ids, executed = thisFile)
 }

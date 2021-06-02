@@ -1,5 +1,5 @@
-# CRF validation analysis
-This project contains code and results from a validation study in Cardio Respiratory Fitness
+# Heart Snapshot validation analysis
+This project contains code and results from our manuscript titled 'Smartphone-Based VO2max Measurement With Heart Snapshot in Clinical and Real-world Settings With a Diverse Population: Validation Study' INSERT HYPERLINK HERE ONCE WE HAVE IT. VO2max is a measure of cardiorespiratory fitness (CRF), and thus the original repository name maintains that nomenclature.
 
 See: https://www.synapse.org/CRF_module for data and output
 

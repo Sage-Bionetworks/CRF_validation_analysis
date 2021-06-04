@@ -1,7 +1,7 @@
 ![heartSnapshotCRFappIcon](https://user-images.githubusercontent.com/3682103/120533529-aaeaf380-c395-11eb-93d7-521a6882df30.png)
 
 # Heart Snapshot validation analysis
-This project contains code and results from our manuscript titled 'Smartphone-Based VO2max Measurement With Heart Snapshot in Clinical and Real-world Settings With a Diverse Population: Validation Study' (Preprint available [here](https://www.biorxiv.org/content/10.1101/2020.07.02.185314v1) until publication in JMU). VO2max is a measure of cardiorespiratory fitness (CRF), and thus the original repository name maintains that nomenclature.
+This project contains code and results from our manuscript titled '[Smartphone-Based VO2max Measurement With Heart Snapshot in Clinical and Real-world Settings With a Diverse Population: Validation Study](https://mhealth.jmir.org/2021/6/e26006)'. VO2max is a measure of cardiorespiratory fitness (CRF), and thus the original repository name maintains that nomenclature.
 
 # Data availability
 Data from this study is available at the [dHealth Digital Health Knowledge Portal](https://dhealth.synapse.org/)
